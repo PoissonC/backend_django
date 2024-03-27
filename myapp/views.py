@@ -14,6 +14,32 @@ from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password
 
 from rest_framework.permissions import IsAuthenticated
+from .serializers import ChangePasswordSerializer, UserRegistrationSerializer
+
+class LogoutAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        # Delete the token to log out
+        request.user.auth_token.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+class ChangePasswordView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        serializer = ChangePasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            # Check old password
+            if not user.check_password(serializer.validated_data['current_password']):
+                return Response({"current_password": ["Wrong password."]}, 
+                                status=status.HTTP_400_BAD_REQUEST)
+            # Set new password
+            user.set_password(serializer.validated_data['new_password'])
+            user.save()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserSpecificContentView(APIView):
     permission_classes = [IsAuthenticated]
@@ -33,29 +59,13 @@ class UserSpecificContentView(APIView):
         return Response(content)
 
 class SignupAPIView(APIView):
-	def post(self, request, *args, **kwargs):
-		username = request.data.get("username")
-		email = request.data.get("email")
-		password1 = request.data.get("password1")
-		password2 = request.data.get("password2")
-		if not username or not email or not password1 or not password2:
-			return Response({"error": "Username, email, password, and password confirmation are required."}, status=status.HTTP_400_BAD_REQUEST)
-		if password1 != password2:
-			return Response({"error": "input passwords are not the same"}, status=status.HTTP_400_BAD_REQUEST)
-		if User.objects.filter(username=username).exists():
-			return Response({"error": "Username already exists."}, status=status.HTTP_400_BAD_REQUEST)
-
-		# Create the user
-		user = User.objects.create(
-			username=username,
-			email=email,
-			password=make_password(password1)  # Hash the password
-		)
-		
-		# Automatically generate a token for the new user
-		token = Token.objects.create(user=user)
-		
-		return Response({"token": token.key, "user_id": user.id, "username": user.username}, status=status.HTTP_201_CREATED)
+    def post(self, request, *args, **kwargs):
+        serializer = UserRegistrationSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()  # The user is created and saved here
+            token = Token.objects.get(user=user)  # Retrieve the token created for the user
+            return Response({"token": token.key, "user_id": user.id, "username": user.username}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class LoginAPIView(APIView):
 	def post(self, request, *args, **kwargs):
@@ -79,37 +89,3 @@ def index(request):
 		return JsonResponse({'csrfToken': get_token(request)})
 	else:
 		return HttpResponse("fuck off!\n")
-
-# signup page
-
-#return value can be discussed
-
-def user_signup(request):
-	if request.method == 'POST':
-		print(request.POST)
-		if 'username' in request.POST and 'password1' in request.POST and 'password2' in request.POST:
-			if request.POST['password1'] == request.POST['password2']:
-				return HttpResponse("Success!\n")
-			else:
-				return HttpResponse("Fail!\n")
-	return JsonResponse({'csrfToken': get_token(request)})
-
-# login page
-def user_login(request):
-	if request.method == 'POST':
-		form = LoginForm(request.POST)
-		if form.is_valid():
-			username = form.cleaned_data['username']
-			password = form.cleaned_data['password']
-			user = authenticate(request, username=username, password=password)
-			if user:
-				login(request, user)    
-				return redirect('home')
-	else:
-		form = LoginForm()
-	return render(request, 'login.html', {'form': form})
-
-# logout page
-def user_logout(request):
-	logout(request)
-	return redirect('login')
