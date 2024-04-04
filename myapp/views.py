@@ -1,5 +1,8 @@
 from django.shortcuts import render
 
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+
 # Create your views here.
 from django.contrib.auth import authenticate, login, logout 
 from .forms import SignupForm, LoginForm
@@ -59,15 +62,25 @@ class UserSpecificContentView(APIView):
         return Response(content)
 
 class SignupAPIView(APIView):
-    def post(self, request, *args, **kwargs):
-        serializer = UserRegistrationSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()  # The user is created and saved here
-            token = Token.objects.get(user=user)  # Retrieve the token created for the user
-            return Response({"token": token.key, "user_id": user.id, "username": user.username}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+	@method_decorator(csrf_exempt)
+	def dispatch(self, *args, **kwargs):
+		return super().dispatch(*args, **kwargs)
+
+	def post(self, request, *args, **kwargs):
+		serializer = UserRegistrationSerializer(data=request.data)
+		if serializer.is_valid():
+			user = serializer.save()  # The user is created and saved here
+			token = Token.objects.get(user=user)  # Retrieve the token created for the user
+			return Response({"token": token.key, "user_id": user.id, "username": user.username}, status=status.HTTP_201_CREATED)
+		return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class LoginAPIView(APIView):
+
+	@method_decorator(csrf_exempt)
+	def dispatch(self, *args, **kwargs):
+		return super().dispatch(*args, **kwargs)
+
 	def post(self, request, *args, **kwargs):
 		username = request.data.get("username")
 		password = request.data.get("password")

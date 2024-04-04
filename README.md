@@ -4,7 +4,13 @@ This document outlines how to interact with our web service using cURL commands.
 
 ## Getting Started
 
-Before you begin, ensure you have cURL installed on your system. These commands are intended to be run in a terminal or command-line interface.
+Before you begin, ensure you have curl installed on your system. These commands are intended to be run in a terminal or command-line interface.
+
+Run this command to start the server:
+
+```
+python3 manage.py runserver 0.0.0.0:PORT
+```
 
 ### Obtaining a CSRF Token
 
@@ -15,16 +21,17 @@ curl -c cookie.txt http://host_name:port/
 ```
 This command stores the session cookie, including the CSRF token, in cookie.txt.
 
+Note: New version deactivates the CSRF token checks.
+
 ### Signing Up
-Once you have the CSRF token, you can proceed to sign up:
 ```
-curl -b cookie.txt -H "X-CSRFToken: CSRF_token_you_get" -X POST -d "username=***&password1=********&password2=********" http://host_name:port/signup/
+curl -X POST -d "username=***&password1=********&password2=********" http://host_name:port/signup/
 ```
 Replace CSRF_token_you_get with the actual token you received, and fill in the username, password1, and password2 fields.
 ### Logging In
 To log in, use the following command:
 ```
-curl -b cookie.txt -H "X-CSRFToken: CSRF_token_you_get" -X POST -d "username=***&password=********" http://host_name:port/login/
+curl " -X POST -d "username=***&password=********" http://host_name:port/login/
 ```
 Again, replace CSRF_token_you_get with your actual token and fill in the username and password fields.
 
