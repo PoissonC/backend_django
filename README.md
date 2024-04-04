@@ -31,7 +31,7 @@ Replace CSRF_token_you_get with the actual token you received, and fill in the u
 ### Logging In
 To log in, use the following command:
 ```
-curl " -X POST -d "username=***&password=********" http://host_name:port/login/
+curl -X POST -d "username=***&password=********" http://host_name:port/login/
 ```
 Again, replace CSRF_token_you_get with your actual token and fill in the username and password fields.
 
