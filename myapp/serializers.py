@@ -3,6 +3,7 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from rest_framework.authtoken.models import Token
 
+
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password1 = serializers.CharField(write_only=True, required=True)
     password2 = serializers.CharField(write_only=True, required=True)
@@ -10,10 +11,11 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('username', 'email', 'password1', 'password2')
-    
+
     def validate(self, data):
         if data['password1'] != data['password2']:
-            raise serializers.ValidationError({"password2": "Password fields didn't match."})
+            raise serializers.ValidationError(
+                {"password2": "Password fields didn't match."})
         validate_password(data['password1'])
         return data
 
@@ -26,6 +28,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         user.save()
         Token.objects.create(user=user)
         return user
+
 
 class ChangePasswordSerializer(serializers.Serializer):
     current_password = serializers.CharField(required=True)

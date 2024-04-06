@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-_e-abr9olp&bfx_^m!n#t-)spcox=_$ph!k#@0enwgcvec9dvy
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1'] #Add the hostname you want to use
+ALLOWED_HOSTS = ['127.0.0.1']  # Add the hostname you want to use
 
 
 # Application definition
@@ -37,9 +37,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-	'rest_framework',
+    'rest_framework',
     'rest_framework.authtoken',
     'myapp',
+    'greenhouse_data.apps.GreenhouseDataConfig',
 ]
 
 REST_FRAMEWORK = {
