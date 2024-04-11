@@ -39,7 +39,7 @@ class RealSensorModel(models.Model):
     uid = models.UUIDField(
         primary_key=True, default=uuid.uuid4, editable=False)
     nameKey = models.CharField(max_length=64)
-    electricity = models.FloatField()
+    electricity = models.FloatField(default=100)
     lat = models.FloatField()
     lng = models.FloatField()
 
@@ -55,7 +55,7 @@ class RealControllerModel(models.Model):
         GreenhouseModel, on_delete=models.CASCADE, related_name="realControllers")
     uid = models.UUIDField(primary_key=True, default=uuid.uuid4)
     nameKey = models.CharField(max_length=64)
-    electricity = models.FloatField()
+    electricity = models.FloatField(default=100)
     lat = models.FloatField()
     lng = models.FloatField()
 
@@ -70,8 +70,8 @@ class SensorModel(models.Model):
 
     parentItem = models.ForeignKey(
         RealSensorModel, on_delete=models.CASCADE, related_name="sensors")
-    uid = models.UUIDField(primary_key=True, default=uuid.uuid4)
-    currentValue = models.FloatField()
+    index = models.IntegerField()
+    sensorKey = models.CharField(max_length=32)
 
 
 class ControllerModel(models.Model):
@@ -84,21 +84,42 @@ class ControllerModel(models.Model):
 
     parentItem = models.ForeignKey(
         RealControllerModel, on_delete=models.CASCADE, related_name="controllers")
-    uid = models.UUIDField(primary_key=True, default=uuid.uuid4)
-    on = models.BooleanField()
-    manual = models.BooleanField()
+    index = models.IntegerField()
+    controllerKey = models.CharField(max_length=32)
 
 
-class EvalvePropertyModel(models.Model):
+class SensorValueHistoryModel(models.Model):
     """
-    The model especially for electric valve property except for the scheduled time slots.
+    Record sensor data history
     """
-    # NOTE: this model currently contains nothing
     class Meta:
-        db_table = "evalvePropertyTable"
+        db_table = "sensorHistoryTable"
+        ordering = ["sensor", "timestamp"]
 
-    controller = models.OneToOneField(
-        ControllerModel, on_delete=models.CASCADE, primary_key=True, related_name="evalveProperty")
+    sensor = models.ForeignKey(
+        SensorModel, on_delete=models.SET_NULL, null=True, related_name="sensorHistory")
+    timestamp = models.DateTimeField()
+    isCurrent = models.BooleanField()
+    value = models.FloatField()
+
+
+class ControllerSettingHistoryModel(models.Model):
+    """
+    Record controller setting history
+    """
+
+    class Meta:
+        db_table = "controllerHistoryTable"
+        ordering = ["controller", "timestamp"]
+
+    controller = models.ForeignKey(
+        ControllerModel, on_delete=models.CASCADE, related_name="controllerHistory")
+    timestamp = models.DateTimeField()
+    isCurrent = models.BooleanField()
+    on = models.BooleanField()
+    manualControl = models.BooleanField(default=False)
+    openTemp = models.FloatField(null=True)
+    closeTemp = models.FloatField(null=True)
 
 
 class EvalveScheduleModel(models.Model):
@@ -109,34 +130,8 @@ class EvalveScheduleModel(models.Model):
     class Meta:
         db_table = "evalveScheduleTable"
 
-    evalveProperty = models.ForeignKey(
-        EvalvePropertyModel, on_delete=models.CASCADE, related_name="evalveSchedules")
-    cutHumidity = models.FloatField()
-    duration = models.DurationField()
-    startTime = models.TimeField(default=datetime.time(0, 0, 0))
-
-
-class ShadePropertyModel(models.Model):
-    """
-    The model especially for shade controller property
-    """
-    class Meta:
-        db_table = "shadePropertyTable"
-
-    controller = models.OneToOneField(
-        ControllerModel, on_delete=models.CASCADE, primary_key=True, related_name="shadeProperty")
-    openTemp = models.FloatField()
-    closeTemp = models.FloatField()
-
-
-class FanPropertyModel(models.Model):
-    """
-    The model especially for fan controller property
-    """
-    class Meta:
-        db_table = "fanPropertyTable"
-
-    controller = models.OneToOneField(
-        ControllerModel, on_delete=models.CASCADE, primary_key=True, related_name="fanProperty")
-    openTemp = models.FloatField()
-    closeTemp = models.FloatField()
+    controllerSetting = models.ForeignKey(
+        ControllerSettingHistoryModel, on_delete=models.CASCADE, related_name="evalveSchedules")
+    cutHumidity = models.FloatField(default=35)
+    duration = models.DurationField(default=datetime.timedelta(30))
+    startTime = models.TimeField(default=datetime.time(16, 0, 0))

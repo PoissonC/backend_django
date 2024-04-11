@@ -4,194 +4,155 @@ from django.contrib.auth.models import User
 from rest_framework import serializers
 from greenhouse_data.models import *
 
-# TODO: solve foreign key issue with nested serializer
+# TODO: update to time table database form
+
+
+class SensorValueHistorySerializer(serializers.ModelSerializer):
+    """
+    Convert json data to sensor value history instance / convert sensor value history instance into dictionary
+    """
+
+    class Meta:
+        model = SensorValueHistoryModel
+        fields = ["timeStamp", "isCurrent", "value"]
 
 
 class EValveScheduleSerializer(serializers.ModelSerializer):
     """
     Convert json data to evalve schedule instance / convert evalve schedule instance into dictionary
-    #### Request format:
-    {
-        "evalveProperty": the parent evalve property instance, (opt)
-        "cutHumidity": float,
-        "duration": int,
-        "startTimeStr": isoformat time (HH:MM)
-    }
     """
-
-    startTime = serializers.TimeField(input_formats=["%H:%M"])
 
     class Meta:
         model = EvalveScheduleModel
-        exclude = ["evalveProperty"]
-
-    def create(self, validated_data):
-        validated_data["duration"] = timedelta(
-            seconds=validated_data["duration"])
-        return EvalveScheduleModel.objects.create(**validated_data)
-
-
-class EValvePropertySerializer(serializers.ModelSerializer):
-    """
-    Convert json data to evalve property instance / convert evalve property instance into dictionary
-    #### Request format:
-    {
-        "controller": Controller instance, (opt)
-        "evalveSchedule": list<map> instance for many EvalveScheduleModels
-    }
-    """
-    evalveSchedules = EValveScheduleSerializer(many=True)
-
-    class Meta:
-        model = EvalvePropertyModel
-        exclude = ["controller"]
-
-    def create(self, validated_data):
-        evalveSchedulesData = validated_data.pop("evalveSchedules")
-        evalveProperty = EvalvePropertyModel.objects.create(**validated_data)
-
-        evalveScheduleSerializer = self.fields["evalveSchedules"]
-        for schedule in evalveSchedulesData:
-            schedule["evalveProperty"] = evalveProperty
-        evalveScheduleSerializer.create(evalveSchedulesData)
-
-        return evalveProperty
-
-
-class ShadePropertySerializer(serializers.ModelSerializer):
-    """
-    Convert json data to shade property instance / convert shade property instance into dictionary
-    #### Request format:
-    {
-        "controller": Controller instance, (opt)
-        "openTemp": float,
-        "closeTemp": float,
-    }
-    """
-
-    class Meta:
-        model = ShadePropertyModel
-        exclude = ["controller"]
-
-    def create(self, validated_data):
-        return super().create(validated_data)
-
-
-class FanPropertySerializer(serializers.ModelSerializer):
-    """
-    Convert json data to fan property instance / convert fan property instance into dictionary
-    #### Request format:
-    {
-        "controller": Controller instance, (opt)
-        "openTemp": float,
-        "closeTemp": float,
-    }
-    """
-
-    class Meta:
-        model = FanPropertyModel
-        exclude = ["controller"]
-
-    def create(self, validated_data):
-        return super().create(validated_data)
+        # generally controllerSetting is also required for creation
+        fields = ["cutHumidity", "duration", "startTime"]
 
 
 class ControllerSerializer(serializers.ModelSerializer):
     """
-    Convert json data to controller instance / convert controller instance into dictionary
-    #### Request format:
-    {
-        "on": bool,
-        "manual": bool,
-        "parentItem": parent instance (opt)
-        "evalveProperty": map instance,
-        "shadeProperty": map instance,
-        "fanProperty": map instance,
-    }
+    Convert json data to controller instance
     """
-    evalveProperty = EValvePropertySerializer(many=False, allow_null=True)
-    shadeProperty = ShadePropertySerializer(many=False, allow_null=True)
-    fanProperty = FanPropertySerializer(many=False, allow_null=True)
+
+    timestamp = serializers.DateTimeField()
+    on = serializers.BooleanField(allow_null=True, required=False)
+    manualControl = serializers.BooleanField(allow_null=True, required=False)
+    openTemp = serializers.FloatField(allow_null=True, required=False)
+    closeTemp = serializers.FloatField(allow_null=True, required=False)
+    evalveSchedules = EValveScheduleSerializer(
+        many=True, allow_null=True, required=False)
 
     class Meta:
         model = ControllerModel
-        exclude = ['parentItem']
+        fields = ["index", "controllerKey", "timestamp", "on", "manualControl",
+                  "openTemp", "closeTemp", "evalvSchedules"]
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
-        tot = 0
-        for key in ["evalveProperty", "shadeProperty", "fanProperty"]:
-            if attrs[key] != None:
-                tot += 1
-        if tot > 1:
-            raise serializers.ValidationError(
-                {"there should be only one kind of property map"})
-        elif tot < 1:
-            raise serializers.ValidationError(
-                {"there should be at least one kind of property map"})
+
+        keysMap = {
+            "evalve": ["evalveSchedules"],
+            "shade": ["openTemp", "closeTemp"],
+            "fan": ["openTemp", "closeTemp"]
+        }
+
+        if attrs["controllerKey"] not in keysMap.keys:
+            raise serializers.ValidationError({"controllerKey is not defined"})
+
+        for controllerKey in keysMap.keys:
+            if attrs["controllerKey"] == controllerKey:
+                for requiredKey in keysMap[controllerKey]:
+                    if attrs[requiredKey] is None:
+                        raise serializers.ValidationError(
+                            {f"'{requiredKey}' should not be None when 'controllerKey' is '{controllerKey}"})
         return attrs
 
+    # UNDONE: not implemented yet
+    def update(self, instance, validated_data):
+        return super().update(instance, validated_data)
+
     def create(self, validated_data):
-        evalvePropertyData = validated_data.pop("evalveProperty")
-        shadePropertyData = validated_data.pop("shadeProperty")
-        fanPropertyData = validated_data.pop("fanProperty")
+        """ The method is for the first declaration of the controller"""
+        if validated_data["parentItem"] is None:
+            raise serializers.ValidationError(
+                {"parentItem parameter is required when creating controller instance"})
 
-        controller = ControllerModel.objects.create(**validated_data)
+        controller = ControllerModel.objects.create(
+            index=validated_data["index"],
+            controllerKey=validated_data["controllerKey"],
+            parentItem=validated_data["parentItem"],
+        )
+        controllerSetting = ControllerSettingHistoryModel.objects.create(
+            controller=controller,
+            timestamp=validated_data["timestamp"],
+            on=validated_data["on"],
+            manualControl=validated_data["manualControl"],
+            openTemp=validated_data["openTemp"],
+            closeTemp=validated_data["closeTemp"],
+        )
 
-        if (evalvePropertyData != None):
-            evalvePropertySer = self.fields["evalveProperty"]
-            evalvePropertyData["controller"] = controller
-            evalvePropertySer.create(evalvePropertyData)
-
-        elif (shadePropertyData != None):
-            shadePropertySer = self.fields["shadeProperty"]
-            shadePropertyData["controller"] = controller
-            shadePropertySer.create(shadePropertyData)
-
-        elif (fanPropertyData != None):
-            fanPropertySer = self.fields["fanProperty"]
-            fanPropertyData["controller"] = controller
-            fanPropertySer.create(fanPropertyData)
-
+        if validated_data["evalveSchedules"] is not None:
+            eSchedulesData = validated_data["evalveSchedules"]
+            eSer = self.fields["evalveSchedules"]
+            for s in eSchedulesData:
+                s["controllerSetting"] = controllerSetting
+            eSer.create(eSchedulesData)
         return controller
 
 
 class SensorSerializer(serializers.ModelSerializer):
     """
-    Convert json data to Sensor instance / convert sensor instance into dictionary
-    #### Request format:
-    {
-        "parentItem": instance of parent item (opt)
-        "currentValue": float,
-    }
+    Convert json data to Sensor instance
     """
+
+    timestamp = serializers.DateTimeField()  # YYYY-MM-DD hh:mm:ss
+    currentValue = serializers.FloatField()
+
     class Meta:
         model = SensorModel
-        exclude = ['parentItem']
+        # normally "parentItem" is requested as well
+        fields = ['index', 'sensorKey', 'currentValue', 'timestamp']
+
+    # UNDONE: overwrite it when needed
+    def update(self, instance, validated_data):
+        return super().update(instance, validated_data)
 
     def create(self, valData):
-        sensor = SensorModel.objects.create(**valData)
+        """ The method is for the first declaration of the sensor"""
+        if valData["parentItem"] is None:
+            raise serializers.ValidationError(
+                {"parentItem parameter is required when creating Sensor instance"})
+
+        sensor = SensorModel.objects.create(
+            index=valData['index'],
+            sensorKey=valData['sensorKey'],
+            parentItem=valData["parentItem"],
+        )
+        SensorValueHistoryModel.objects.create(
+            timestamp=valData["timestamp"],
+            value=valData["currentValue"],
+            sensor=sensor,
+            isCurrent=True,
+        )
         return sensor
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        return ret
 
 
 class RealControllerSerializer(serializers.ModelSerializer):
     """
     Convert json data to realController instance / Convert realController instance into dictionary
-    #### Request format:
-    {
-        greenhouse: instance of parent greenhouse (opt)
-        nameKey: models.CharField(max_length=64)
-        electricity: models.FloatField()
-        lat: models.FloatField()
-        lng :models.FloatField()
-
-    }
     """
     controllers = ControllerSerializer(many=True)
 
     class Meta:
         model = RealControllerModel
-        exclude = ["greenhouse"]
+        fields = ["nameKey", "lat", "lng", "electricity", "controllers"]
+
+    # UNDONE: not changed yet
+    def update(self, instance, validated_data):
+        return super().update(instance, validated_data)
 
     def create(self, validated_data):
         contrlsValData = validated_data.pop('controllers')
@@ -204,29 +165,21 @@ class RealControllerSerializer(serializers.ModelSerializer):
 
         return realController
 
-    # TODO: not changed yet
-    def update(self, instance, validated_data):
-        return super().update(instance, validated_data)
-
 
 class RealSensorSerializer(serializers.ModelSerializer):
     """
     Convert json data to realSensor instance / Convert realSensor instance into dictionary
-    #### Request format:
-    {
-        greenhouse: instance of parent greenhosue (opt)
-        nameKey: models.CharField(max_length=64)
-        electricity: models.FloatField()
-        lat: models.FloatField()
-        lng :models.FloatField()
-
-    }
     """
-    sensors = SensorSerializer(many=True, allow_empty=True)
+    sensors = SensorSerializer(
+        many=True, allow_empty=True, required=False)
 
     class Meta:
         model = RealSensorModel
-        exclude = ["greenhouse"]
+        fields = ["nameKey", "lat", "lng", "electricity", "sensors"]
+
+    # TODO: not changed yet
+    def update(self, instance, validated_data):
+        return super().update(instance, validated_data)
 
     def create(self, validated_data):
         sensorsValData = validated_data.pop('sensors')
@@ -239,26 +192,16 @@ class RealSensorSerializer(serializers.ModelSerializer):
 
         return realSensor
 
-    # TODO: not changed yet
-    def update(self, instance, validated_data):
-        return super().update(instance, validated_data)
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        ret["uid"] = instance.uid
+        return ret
 
 
 class GreenhouseSerializer(serializers.ModelSerializer):
     """
     Convert json data to greenhouse instance / Convert greenhouse instance into dictionary
-    #### Request format:
-    {
-        'owner': username,
-        'name': str,
-        "address": str,
-        "beginDateStr": str,
-        "realSensors": list<dict>,
-        "realControllers": list<dict>,
-    }
     """
-
-    # TODO: add real sensor and real controller later
     """
     Note:
         - JSON: give an owner primary key -> owner instance is given in validated_data
@@ -268,17 +211,17 @@ class GreenhouseSerializer(serializers.ModelSerializer):
         queryset=User.objects.all(),
         many=False,
     )
-    realSensors = RealSensorSerializer(many=True, allow_empty=True)
-    realControllers = RealControllerSerializer(many=True, allow_empty=True)
-    beginDate = serializers.DateField(
-        format="%Y-%m-%d", input_formats="%Y-%m-%d")
+    realSensors = RealSensorSerializer(
+        many=True, allow_null=True, allow_empty=True, required=False)
+    realControllers = RealControllerSerializer(
+        many=True, allow_null=True, allow_empty=True, required=False)
 
     class Meta:
         model = GreenhouseModel
         fields = ['owner', 'name', 'address',
                   'beginDate', 'realSensors', 'realControllers']
 
-    # TODO: not changed yet
+    # UNDONE: not changed yet
     def update(self, instance, validated_data):
         return super().update(instance, validated_data)
 
@@ -288,13 +231,7 @@ class GreenhouseSerializer(serializers.ModelSerializer):
         # pop out real_controller dictionary
         realControllerDatas = validated_data.pop('realControllers')
 
-        beginDate = datetime.fromisoformat(validated_data['beginDateStr'])
-        greenhouse = GreenhouseModel.objects.create(
-            owner=validated_data['owner'],
-            name=validated_data['name'],
-            address=validated_data['address'],
-            beginDate=beginDate,
-        )
+        greenhouse = GreenhouseModel.objects.create(**validated_data)
 
         # create real sensors
         realSensorSerializer = self.fields['realSensors']
@@ -306,8 +243,15 @@ class GreenhouseSerializer(serializers.ModelSerializer):
         # create real controllers
         realControllerSerializer = self.fields['realControllers']
         for rController in realControllerDatas:
+            # NOTE: we can try using PrimaryKeyField for this kind of things, so we only has to input greenhouseUID instead of an instance
             rController["greenhouse"] = greenhouse
 
         realControllerSerializer.create(realControllerDatas)
 
         return greenhouse
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        ret["uid"] = instance.uid
+
+        return ret
