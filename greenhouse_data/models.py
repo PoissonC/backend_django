@@ -36,25 +36,7 @@ class RealSensorModel(models.Model):
 
     greenhouse = models.ForeignKey(
         GreenhouseModel, on_delete=models.CASCADE, related_name="realSensors")
-    uid = models.UUIDField(
-        primary_key=True, default=uuid.uuid4, editable=False)
-    nameKey = models.CharField(max_length=64)
-    electricity = models.FloatField(default=100)
-    lat = models.FloatField()
-    lng = models.FloatField()
-
-
-class RealControllerModel(models.Model):
-    """
-    The model for real controller item
-    """
-    class Meta:
-        db_table = "realControllerTable"
-
-    greenhouse = models.ForeignKey(
-        GreenhouseModel, on_delete=models.CASCADE, related_name="realControllers")
-    uid = models.UUIDField(primary_key=True, default=uuid.uuid4)
-    nameKey = models.CharField(max_length=64)
+    realSensorID = models.CharField(max_length=64)
     electricity = models.FloatField(default=100)
     lat = models.FloatField()
     lng = models.FloatField()
@@ -70,7 +52,6 @@ class SensorModel(models.Model):
 
     parentItem = models.ForeignKey(
         RealSensorModel, on_delete=models.CASCADE, related_name="sensors")
-    index = models.IntegerField()
     sensorKey = models.CharField(max_length=32)
 
 
@@ -82,9 +63,12 @@ class ControllerModel(models.Model):
     class Meta:
         db_table = "controllerTable"
 
-    parentItem = models.ForeignKey(
-        RealControllerModel, on_delete=models.CASCADE, related_name="controllers")
-    index = models.IntegerField()
+    greenhouse = models.ForeignKey(
+        GreenhouseModel, on_delete=models.CASCADE, related_name="realControllers")
+    controllerID = models.CharField(max_length=64)
+    electricity = models.FloatField(default=100)
+    lat = models.FloatField()
+    lng = models.FloatField()
     controllerKey = models.CharField(max_length=32)
 
 
@@ -99,7 +83,7 @@ class SensorValueHistoryModel(models.Model):
     sensor = models.ForeignKey(
         SensorModel, on_delete=models.SET_NULL, null=True, related_name="sensorHistory")
     timestamp = models.DateTimeField()
-    isCurrent = models.BooleanField()
+    isCurrent = models.BooleanField(default=True)
     value = models.FloatField()
 
 
@@ -115,7 +99,7 @@ class ControllerSettingHistoryModel(models.Model):
     controller = models.ForeignKey(
         ControllerModel, on_delete=models.CASCADE, related_name="controllerHistory")
     timestamp = models.DateTimeField()
-    isCurrent = models.BooleanField()
+    isCurrent = models.BooleanField(default=True)
     on = models.BooleanField()
     manualControl = models.BooleanField(default=False)
     openTemp = models.FloatField(null=True)
@@ -133,5 +117,5 @@ class EvalveScheduleModel(models.Model):
     controllerSetting = models.ForeignKey(
         ControllerSettingHistoryModel, on_delete=models.CASCADE, related_name="evalveSchedules")
     cutHumidity = models.FloatField(default=35)
-    duration = models.DurationField(default=datetime.timedelta(30))
+    duration = models.DurationField()
     startTime = models.TimeField(default=datetime.time(16, 0, 0))
