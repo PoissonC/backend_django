@@ -217,7 +217,7 @@ def get_sensor_to_app() -> requests.Response:
         }
     )
     res = requests.post(
-        url=f"http://{host}/greenhouse/sensors/app",
+        url=f"http://{host}/greenhouse/app/sensors",
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Token {token}",
@@ -237,7 +237,7 @@ def get_controller_to_gre() -> requests.Response:
         }
     )
     res = requests.post(
-        url=f"http://{host}/greenhouse/controllers/gh",
+        url=f"http://{host}/greenhouse/gh/controllers",
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Token {token}",
@@ -256,7 +256,7 @@ def get_all_controller_to_gre() -> requests.Response:
         }
     )
     res = requests.post(
-        url=f"http://{host}/greenhouse/all-controller/gh",
+        url=f"http://{host}/greenhouse/gh/controllers",
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Token {token}",
@@ -276,7 +276,7 @@ def get_controller_to_app() -> requests.Response:
         }
     )
     res = requests.post(
-        url=f"http://{host}/greenhouse/controllers/app",
+        url=f"http://{host}/greenhouse/app/controllers",
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Token {token}",

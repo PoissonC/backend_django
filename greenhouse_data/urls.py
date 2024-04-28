@@ -1,25 +1,25 @@
 from django.urls import path
-from . import views
+from . import greenhouse_views, app_views
 
 urlpatterns = [
     # get
-    path('main-data', views.GetGreenhouseDataAPI.as_view()),
-    path('basic-info', views.GetGreenhouseBasicInfoAPI.as_view()),
-    path('sensors/app', views.GetSensorCurrentDataToApp.as_view()),
-    path('controllers/gh', views.GetControllerSetting.as_view()),
-    path('all-controller/gh', views.GetAllControllerSetting.as_view()),
-    path('controllers/app', views.GetControllerSettingToApp.as_view()),
+    path('app', app_views.GetGreenhouseDataAPI.as_view()),
+    path('app/sensors', app_views.GetSensorCurrentDataToApp.as_view()),
+    path('app/controllers', app_views.GetControllerSettingToApp.as_view()),
+    path('gh/controllers', greenhouse_views.GetAllControllerSetting.as_view()),
     # create
-    path('create/greenhouse', views.CreatGreenhouseAPI.as_view()),
-    path('create/real-sensors', views.CreateRealSensorAPI.as_view()),
-    path('create/controllers', views.CreateControllerAPI.as_view()),
+    path('create/greenhouse', greenhouse_views.CreatGreenhouseAPI.as_view()),
+    path('create/real-sensors', greenhouse_views.CreateRealSensorAPI.as_view()),
+    path('create/controllers', greenhouse_views.CreateControllerAPI.as_view()),
     # delete
-    path('delete/greenhouse', views.DeleteGreenhouseAPI.as_view()),
-    path('delete/real-sensor', views.DeleteRealSensorAPI.as_view()),
-    path('delete/controlelr', views.DeleteControllerAPI.as_view()),
+    path('delete/greenhouse', greenhouse_views.DeleteGreenhouseAPI.as_view()),
+    path('delete/real-sensor', greenhouse_views.DeleteRealSensorAPI.as_view()),
+    path('delete/controlelr', greenhouse_views.DeleteControllerAPI.as_view()),
     # update
-    path('update/controller-info', views.UpdateControllerInfoAPI.as_view()),
-    path('update/controller-setting', views.UpdateControllerSettingAPI.as_view()),
-    path('update/sensor-info', views.UpdateRealSensorInfoAPI.as_view()),
-    path('update/sensor-data', views.UpdateRealSensorDataAPI.as_view()),
+    path('update/controller-info',
+         app_views.UpdateControllerInfoAPI.as_view()),
+    path('update/controller-setting',
+         app_views.UpdateControllerSettingAPI.as_view()),
+    path('update/sensor-info', app_views.UpdateRealSensorInfoAPI.as_view()),
+    path('update/sensor-data', greenhouse_views.UpdateRealSensorDataAPI.as_view()),
 ]
