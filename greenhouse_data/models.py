@@ -64,7 +64,7 @@ class ControllerModel(models.Model):
         db_table = "controllerTable"
 
     greenhouse = models.ForeignKey(
-        GreenhouseModel, on_delete=models.CASCADE, related_name="realControllers")
+        GreenhouseModel, on_delete=models.CASCADE, related_name="controllers")
     controllerID = models.CharField(max_length=64)
     electricity = models.FloatField(default=100)
     lat = models.FloatField()

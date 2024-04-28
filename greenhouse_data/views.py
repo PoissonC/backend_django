@@ -421,7 +421,7 @@ class GetGreenhouseDataAPI(APIView):
         )
 
 
-class GetControllerSettingToGre(APIView):
+class GetControllerSetting(APIView):
     """
     Return the setting of the specified controllers
 
@@ -488,7 +488,7 @@ class GetControllerSettingToGre(APIView):
         return Response(ret, status=status.HTTP_200_OK)
 
 
-class GetAllControllerSettingToGre(APIView):
+class GetAllControllerSetting(APIView):
     """
     (for greenhouse) This class provide method to receive the setting data
     for all controllers in a greenhouse
@@ -543,7 +543,7 @@ class GetAllControllerSettingToGre(APIView):
         for controller in controllers:
             controllerSer = ControllerSerializer(controller)
             controllerID = controllerSer.data["controllerID"]
-            controller.data.setdefault("setting", None)
+            controllerSer.data.setdefault("setting", None)
             ret[controllerID] = controllerSer.data["setting"]
         return Response(ret, status=status.HTTP_200_OK)
 
@@ -679,6 +679,7 @@ class GetSensorCurrentDataToApp(APIView):
             print("sensorKeys is not included in request data")
             return Response({"please include sensorKeys in request data"}, status=status.HTTP_400_BAD_REQUEST)
 
+        # get greenhouse
         greenhouse = GreenhouseModel.objects.get(
             uid=request.data["greenhouseUID"])
 

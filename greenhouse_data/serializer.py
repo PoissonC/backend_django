@@ -5,7 +5,7 @@ from rest_framework import serializers
 from greenhouse_data.models import *
 
 """
-The propose of the serializers is to 
+The propose of the serializers is to
 1. turn the json format into model intance
 2. turn the model instance into json format
 """
@@ -27,7 +27,7 @@ class SensorValueHistorySerializer(serializers.ModelSerializer):
     ```
     {
         "sensor": sensorInstance,
-        "value": 22, 
+        "value": 22,
         "timestamp": "2024-04-03 17:04:04",
     }
     ```
@@ -56,7 +56,7 @@ class SensorValueHistorySerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         """
         Update sensor data is actually creating new sensor data history
-        instance. In the `create` method from controller setting serializer, 
+        instance. In the `create` method from controller setting serializer,
         the last current data will be set to `isCurrent = False` automatically.
         """
         if validated_data["sensor"] is None:
@@ -81,7 +81,7 @@ class SensorSerializer(serializers.ModelSerializer):
     {
         "parentItem": realSensorInstance,
         "sensorKey": "airHumidity",
-        "currentValue": 22, 
+        "currentValue": 22,
         "timestamp": "2024-04-03 17:04:04",
     }
     ```
@@ -105,7 +105,6 @@ class SensorSerializer(serializers.ModelSerializer):
 
     def create(self, valData):
         """ The method is for the first declaration of the sensor"""
-        print(valData)
         valData.setdefault("parentItem", None)
         if valData["parentItem"] is None:
             raise serializers.ValidationError(
@@ -124,7 +123,7 @@ class SensorSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         ret = {
             "sensorKey": instance.sensorKey,
-            "parentItem": instance.parentItem,
+            "parentItem": instance.parentItem.id,
         }
         currentSensorData = list(SensorValueHistoryModel.objects.filter(
             sensor=instance).filter(isCurrent=True))
@@ -179,6 +178,7 @@ class RealSensorSerializer(serializers.ModelSerializer):
     }
     ```
     """
+
     sensors = SensorSerializer(
         many=True, allow_empty=True, required=False)
 
@@ -319,6 +319,7 @@ class ControllerSettingSerializer(serializers.ModelSerializer):
             for s in schedules:
                 ser = EValveScheduleSerializer(s)
                 ret["evalveSchedules"].append(ser.data)
+
         return ret
 
 
@@ -402,7 +403,7 @@ class ControllerSerializer(serializers.ModelSerializer):
                     {f"'{requiredKey}' should not be None when 'controllerKey' is '{validated_data['controllerKey']}"})
 
     def create(self, validated_data):
-        """ 
+        """
         The method is for the first declaration of the controller. The beginning setting
         would be labled "isCurrent" in controller setting history model. Only the latest
         setting would be labeled with "isCurrent == True" in ControllerSettingHistoryModel
@@ -422,11 +423,11 @@ class ControllerSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         """
         Get the current controller setting for the controller, serialzie the current controller setting
-        to json format. The controller setting might include the following fields 
+        to json format. The controller setting might include the following fields
         `["on", "manualControl", "openTemp", "closeTemp", "evalveSchedules]`
         """
         ret = {
-            "greenhouse": instance.greenhouse,
+            "greenhouse": instance.greenhouse.uid,
             "controllerID": instance.controllerID,
             "controllerKey": instance.controllerKey,
             "electricity": instance.electricity,
@@ -444,7 +445,6 @@ class ControllerSerializer(serializers.ModelSerializer):
         currentControllerSetting = currentControllerSettingList[0]
         cSettingSer = ControllerSettingSerializer(currentControllerSetting)
         ret["setting"] = cSettingSer.data
-
         return ret
 
 
@@ -458,7 +458,7 @@ class GreenhouseSerializer(serializers.ModelSerializer):
     Convert json data to greenhouse instance / Convert greenhouse instance into dictionary
     """
     """
-    Note:
+    # NOTE:
         - JSON: give an owner primary key -> owner instance is given in validated_data
         - Instance: give an owner(user) instance -> user id is given in validated_data (?)
     """
@@ -470,11 +470,11 @@ class GreenhouseSerializer(serializers.ModelSerializer):
         many=True, allow_null=True, allow_empty=True, required=False)
     controllers = ControllerSerializer(
         many=True, allow_null=True, allow_empty=True, required=False)
+    uid = serializers.UUIDField(required=False)
 
     class Meta:
         model = GreenhouseModel
-        fields = ['owner', 'name', 'address',
-                  'beginDate', 'realSensors', 'controllers']
+        fields = '__all__'
 
     def update(self, instance, validated_data):
         return super().update(instance, validated_data)
@@ -504,8 +504,7 @@ class GreenhouseSerializer(serializers.ModelSerializer):
 
         return greenhouse
 
-    def to_representation(self, instance):
+    def to_representation(self, instance: GreenhouseModel):
         ret = super().to_representation(instance)
-        ret["uid"] = instance.uid
-
+        print(ret)
         return ret

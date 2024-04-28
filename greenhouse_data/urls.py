@@ -6,8 +6,8 @@ urlpatterns = [
     path('main-data', views.GetGreenhouseDataAPI.as_view()),
     path('basic-info', views.GetGreenhouseBasicInfoAPI.as_view()),
     path('sensors/app', views.GetSensorCurrentDataToApp.as_view()),
-    path('controllers/gh', views.GetControllerSettingToGre.as_view()),
-    path('all-controller/gh', views.GetAllControllerSettingToGre.as_view()),
+    path('controllers/gh', views.GetControllerSetting.as_view()),
+    path('all-controller/gh', views.GetAllControllerSetting.as_view()),
     path('controllers/app', views.GetControllerSettingToApp.as_view()),
     # create
     path('create/greenhouse', views.CreatGreenhouseAPI.as_view()),
