@@ -52,20 +52,29 @@ class CreateRealSensorAPI(APIView):
 
     def post(self, request):
         # NOTE: we can try using PrimaryKeyField for greenhouse in serializer, so we only has to input greenhouseUID instead of an instance
-        greenhouse = GreenhouseModel.objects.get(
-            uid=request.data.pop("greenhouseUID"))
+        # validate
+        if request.data["greenhouseUID"] is None:
+            return Response({"greenhouseUID field not included in request data"}, status=status.HTTP_400_BAD_REQUEST)
 
-        rSensors: dict = request.data["realSensors"]
-        for realSensorID, rSensorData in rSensors.items():
-            rSensorData["greenhouse"] = greenhouse
-            rSensorData["realSensorID"] = realSensorID
-            rSensorSer = RealSensorSerializer()
-            rSensorSer.create(rSensorData)
+        try:
+            greenhouse = GreenhouseModel.objects.get(
+                uid=request.data.pop("greenhouseUID"))
 
-        result = {
-            "message": "item created",
-        }
-        return Response(result, status=status.HTTP_200_OK)
+            rSensors: dict = request.data["realSensors"]
+            for realSensorID, rSensorData in rSensors.items():
+                rSensorData["greenhouse"] = greenhouse
+                rSensorData["realSensorID"] = realSensorID
+                rSensorSer = RealSensorSerializer()
+                rSensorSer.create(rSensorData)
+
+            result = {
+                "message": "item created",
+            }
+            return Response(result, status=status.HTTP_200_OK)
+
+        except GreenhouseModel.DoesNotExist as e:
+            print(f"Greenhouse does not exist")
+            return Response({"message": "Parent greenhouse not found"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class CreateControllerAPI(APIView):
@@ -119,20 +128,25 @@ class CreateControllerAPI(APIView):
 
     def post(self, request):
         # NOTE: we can try using PrimaryKeyField for greenhouse in serializer, so we only has to input greenhouseUID instead of an instance
-        greenhouse = GreenhouseModel.objects.get(
-            uid=request.data.pop("greenhouseUID"))
+        try:
+            greenhouse = GreenhouseModel.objects.get(
+                uid=request.data.pop("greenhouseUID"))
 
-        contrllersDatas: dict = request.data["controllers"]
-        for controllerID, controllerData in contrllersDatas.items():
-            controllerData["greenhouse"] = greenhouse
-            controllerData["controllerID"] = controllerID
-            controllerSer = ControllerSerializer()
-            controllerSer.create(controllerData)
+            contrllersDatas: dict = request.data["controllers"]
+            for controllerID, controllerData in contrllersDatas.items():
+                controllerData["greenhouse"] = greenhouse
+                controllerData["controllerID"] = controllerID
+                controllerSer = ControllerSerializer()
+                controllerSer.create(controllerData)
 
-        result = {
-            "message": "item created",
-        }
-        return Response(result, status=status.HTTP_200_OK)
+            result = {
+                "message": "item created",
+            }
+            return Response(result, status=status.HTTP_200_OK)
+
+        except GreenhouseModel.DoesNotExist as e:
+            print(f"Greenhouse does not exist")
+            return Response({"message": "Parent greenhouse not found"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class GetControllerSetting(APIView):
@@ -175,30 +189,39 @@ class GetControllerSetting(APIView):
     """
 
     def post(self, request):
-        greenhouse = GreenhouseModel.objects.get(
-            uid=request.data["greenhouseUID"])
 
         # validate
         if request.data["greenhouseUID"] is None:
-            print("greenhouseUID is not included in request data")
-            return Response({"please include greenhouseUID in request data"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"greenhouseUID field not included in request data"}, status=status.HTTP_400_BAD_REQUEST)
+
         if request.data["controllerID"] is None:
-            print("controllerID is not included in request data")
-            return Response("please include controllerID in request data", status=status.HTTP_400_BAD_REQUEST)
+            return Response("controllerID is not included request data", status=status.HTTP_400_BAD_REQUEST)
 
-        ret = {}
-        for controllerID in request.data["controllerID"]:
+        try:
+            greenhouse = GreenhouseModel.objects.get(
+                uid=request.data["greenhouseUID"])
+            ret = {}
 
-            controller = list(ControllerModel.objects.filter(
-                greenhouse=greenhouse, controllerID=controllerID))
+            for controllerID in request.data["controllerID"]:
+                controller = list(ControllerModel.objects.filter(
+                    greenhouse=greenhouse, controllerID=controllerID))
 
-            if len(controller) == 0:
-                print("warning: request for non-exist controller")
-                continue
+                if len(controller) == 0:
+                    print("warning: request for non-exist controller")
+                    continue
 
-            controllerSer = ControllerSerializer(controller[0])
-            ret[controllerID] = controllerSer.data["setting"]
-        return Response(ret, status=status.HTTP_200_OK)
+                controllerSer = ControllerSerializer(controller[0])
+                ret[controllerID] = controllerSer.data["setting"]
+
+            return Response(ret, status=status.HTTP_200_OK)
+
+        except GreenhouseModel.DoesNotExist:
+            print("Greenhouse not found")
+            return Response({"message": "Parent greenhouse not found"}, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            print(e)
+            return Response({"message": "server error occurs"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class GetAllControllerSetting(APIView):
@@ -242,23 +265,29 @@ class GetAllControllerSetting(APIView):
     """
 
     def post(self, request):
-        greenhouse = GreenhouseModel.objects.get(
-            uid=request.data["greenhouseUID"])
+        try:
+            # validate
+            if request.data["greenhouseUID"] is None:
+                print("greenhouseUID is not included in request data")
+                return Response({"please include greenhouseUID in request data"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # validate
-        if request.data["greenhouseUID"] is None:
-            print("greenhouseUID is not included in request data")
-            return Response({"please include greenhouseUID in request data"}, status=status.HTTP_400_BAD_REQUEST)
+            greenhouse = GreenhouseModel.objects.get(
+                uid=request.data.pop("greenhouseUID"))
 
-        ret = {}
-        controllers = list(
-            ControllerModel.objects.filter(greenhouse=greenhouse))
-        for controller in controllers:
-            controllerSer = ControllerSerializer(controller)
-            controllerID = controllerSer.data["controllerID"]
-            controllerSer.data.setdefault("setting", None)
-            ret[controllerID] = controllerSer.data["setting"]
-        return Response(ret, status=status.HTTP_200_OK)
+            ret = {}
+
+            controllers = list(
+                ControllerModel.objects.filter(greenhouse=greenhouse))
+            for controller in controllers:
+                controllerSer = ControllerSerializer(controller)
+                controllerID = controllerSer.data["controllerID"]
+                controllerSer.data.setdefault("setting", None)
+                ret[controllerID] = controllerSer.data["setting"]
+            return Response(ret, status=status.HTTP_200_OK)
+
+        except GreenhouseModel.DoesNotExist as e:
+            print(f"Greenhouse does not exist")
+            return Response({"message": "Parent greenhouse not found"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UpdateRealSensorDataAPI(APIView):
@@ -287,26 +316,35 @@ class UpdateRealSensorDataAPI(APIView):
     """
 
     def post(self, request):
-        greenhouse = GreenhouseModel.objects.get(
-            uid=request.data["greenhouseUID"])
+        try:
+            if request.data["greenhouseUID"] is None:
+                print("greenhouseUID is not included in request data")
+                return Response({"please include greenhouseUID in request data"}, status=status.HTTP_400_BAD_REQUEST)
 
-        notFound = []
-        for realSensorID, realSensorData in request.data["realSensors"].items():
-            realSensor = list(RealSensorModel.objects.filter(
-                greenhouse=greenhouse, realSensorID=realSensorID))
+            greenhouse = GreenhouseModel.objects.get(
+                uid=request.data.pop("greenhouseUID"))
 
-            if len(realSensor) == 0:
-                print("real sensor not found")
-                notFound.append(realSensorID)
-                continue
+            notFound = []
+            for realSensorID, realSensorData in request.data["realSensors"].items():
+                realSensor = list(RealSensorModel.objects.filter(
+                    greenhouse=greenhouse, realSensorID=realSensorID))
 
-            for sensorKey, sensorValueData in realSensorData.items():
+                if len(realSensor) == 0:
+                    print("real sensor not found")
+                    notFound.append(realSensorID)
+                    continue
 
-                sensor = SensorModel.objects.get(
-                    parentItem=realSensor[0], sensorKey=sensorKey)
+                for sensorKey, sensorValueData in realSensorData.items():
 
-                sensorValueData["sensor"] = sensor
-                sensorValueSer = SensorValueHistorySerializer()
-                sensorValueSer.create(sensorValueData)
+                    sensor = SensorModel.objects.get(
+                        parentItem=realSensor[0], sensorKey=sensorKey)
 
-        return Response({"message": "sensor history updated", "notFound": notFound}, status=status.HTTP_200_OK)
+                    sensorValueData["sensor"] = sensor
+                    sensorValueSer = SensorValueHistorySerializer()
+                    sensorValueSer.create(sensorValueData)
+
+            return Response({"message": "sensor history updated", "notFound": notFound}, status=status.HTTP_200_OK)
+
+        except GreenhouseModel.DoesNotExist as e:
+            print(f"Greenhouse does not exist")
+            return Response({"message": "Parent greenhouse not found"}, status=status.HTTP_400_BAD_REQUEST)

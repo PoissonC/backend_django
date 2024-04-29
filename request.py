@@ -2,9 +2,9 @@ import requests
 import json
 import datetime
 
-token = "ecd712ae12b99b1aac2cac879b353eba4f332358"
+token = "f23534238b9f284e220bd811bb02bd7743269200"
 # token = "e0a8616dda7c0cf5f3451b60b430f4e19274ce4a"
-sample_greenhouse_uid = "70c8a4d7-019e-433b-8491-200ef4a33d48"
+sample_greenhouse_uid = "bcd3efb6-a5e8-498d-bb90-6d644bbaa20a"
 # sample_greenhouse_uid = "f3d3072f-b666-4aeb-b920-8a97a59cf713"
 
 host = "127.0.0.1:8000"
@@ -77,8 +77,8 @@ greenhouse creation
 @api_test
 def create_greenhosue() -> requests.Response:
     payload = json.dumps({
-        "name": "溫室一",
-        "address": "台北市新生南路三段十巷十號二樓",
+        "name": "溫室COOL",
+        "address": "台北市新生南路三段2巷3號4樓",
         "beginDate": "2001-03-21",
     })
 
@@ -445,4 +445,4 @@ def update_sensor_data():
     return res
 
 
-signup()
+create_real_sensor()

@@ -506,5 +506,4 @@ class GreenhouseSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance: GreenhouseModel):
         ret = super().to_representation(instance)
-        print(ret)
         return ret
