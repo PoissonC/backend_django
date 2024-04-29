@@ -16,6 +16,13 @@ def api_test(func):
         res: requests.Response = func()
         print(res.text)
         print(res)
+
+        try:
+            object = json.loads(res.text)
+            with open("result.json", "w") as f:
+                json.dump(object, f, indent=2)
+        except Exception as e:
+            print(e)
     return wrap
 
 
@@ -76,7 +83,7 @@ def create_greenhosue() -> requests.Response:
     })
 
     res = requests.post(
-        url=f"http://{host}/greenhouse/create/greenhouse",
+        url=f"http://{host}/greenhouse/app/create/greenhouse",
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Token {token}",
@@ -115,7 +122,7 @@ def create_real_sensor() -> requests.Response:
         }
     )
     res = requests.post(
-        url=f"http://{host}/greenhouse/create/real-sensors",
+        url=f"http://{host}/greenhouse/gh/create/real-sensors",
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Token {token}",
@@ -168,7 +175,7 @@ def create_controller() -> requests.Response:
     )
 
     return requests.post(
-        url=f"http://{host}/greenhouse/create/controllers",
+        url=f"http://{host}/greenhouse/gh/create/controllers",
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Token {token}",
@@ -185,7 +192,7 @@ greenhouse getter
 @api_test
 def get_greenhouse() -> requests.Response:
     res = requests.get(
-        url=f"http://{host}/greenhouse/main-data",
+        url=f"http://{host}/greenhouse/app",
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Token {token}",
@@ -196,20 +203,7 @@ def get_greenhouse() -> requests.Response:
 
 
 @api_test
-def get_greenhouse_basic_info():
-    res = requests.get(
-        url=f"http://{host}/greenhouse/basic-info",
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Token {token}",
-        },
-    )
-
-    return res
-
-
-@api_test
-def get_sensor_to_app() -> requests.Response:
+def get_sensor() -> requests.Response:
     payload = json.dumps(
         {
             "greenhouseUID": sample_greenhouse_uid,
@@ -234,25 +228,6 @@ def get_controller_to_gre() -> requests.Response:
         {
             "greenhouseUID": sample_greenhouse_uid,
             "controllerID": ["Watering_0"],
-        }
-    )
-    res = requests.post(
-        url=f"http://{host}/greenhouse/gh/controllers",
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Token {token}",
-        },
-        data=payload,
-    )
-
-    return res
-
-
-@api_test
-def get_all_controller_to_gre() -> requests.Response:
-    payload = json.dumps(
-        {
-            "greenhouseUID": sample_greenhouse_uid,
         }
     )
     res = requests.post(
@@ -299,7 +274,7 @@ def delete_greenhouse():
     })
 
     res = requests.delete(
-        url=f"http://{host}/greenhouse/delete/greenhouse",
+        url=f"http://{host}/greenhouse/app/delete/greenhouse",
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Token {token}",
@@ -318,7 +293,7 @@ def delete_real_sensor():
     })
 
     res = requests.delete(
-        url=f"http://{host}/greenhouse/delete/real-sensor",
+        url=f"http://{host}/greenhouse/app/delete/real-sensor",
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Token {token}",
@@ -337,7 +312,7 @@ def delete_controller():
     })
 
     res = requests.delete(
-        url=f"http://{host}/greenhouse/delete/controller",
+        url=f"http://{host}/greenhouse/app/delete/controller",
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Token {token}",
@@ -366,7 +341,7 @@ def update_controller_info():
     )
 
     res = requests.patch(
-        url=f"http://{host}/greenhouse/update/controller-info",
+        url=f"http://{host}/greenhouse/app/update/controller-info",
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Token {token}",
@@ -404,7 +379,7 @@ def update_controller_setting():
     )
 
     res = requests.post(
-        url=f"http://{host}/greenhouse/update/controller-setting",
+        url=f"http://{host}/greenhouse/app/update/controller-setting",
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Token {token}",
@@ -429,7 +404,7 @@ def update_sensor_info():
     )
 
     res = requests.patch(
-        url=f"http://{host}/greenhouse/update/sensor-info",
+        url=f"http://{host}/greenhouse/app/update/sensor-info",
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Token {token}",
@@ -459,7 +434,7 @@ def update_sensor_data():
     )
 
     res = requests.post(
-        url=f"http://{host}/greenhouse/update/sensor-data",
+        url=f"http://{host}/greenhouse/gh/update/sensor-data",
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Token {token}",
@@ -470,4 +445,4 @@ def update_sensor_data():
     return res
 
 
-get_greenhouse()
+get_controller_to_app()

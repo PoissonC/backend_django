@@ -342,7 +342,8 @@ class GetControllerSettingToApp(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        greenhouse = GreenhouseModel.objects.get(uid=request.data["uid"])
+        greenhouse = GreenhouseModel.objects.get(
+            uid=request.data["greenhouseUID"])
 
         # validate
         if request.data["greenhouseUID"] is None:
