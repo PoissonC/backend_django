@@ -91,6 +91,7 @@ class LoginAPIView(APIView):
         username = request.data.get("username")
         password = request.data.get("password")
         user = authenticate(username=username, password=password)
+
         if not username or not password:
             return Response({"error": "Missing username or password."}, status=status.HTTP_400_BAD_REQUEST)
         if user:
@@ -99,6 +100,7 @@ class LoginAPIView(APIView):
             token = Token.objects.create(user=user)
             return Response({"token": token.key}, status=status.HTTP_200_OK)
         else:
+            print("Invalid credential")
             return Response({"error": "Invalid Credentials"}, status=status.HTTP_400_BAD_REQUEST)
 
 # Home page

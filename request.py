@@ -445,4 +445,4 @@ def update_sensor_data():
     return res
 
 
-get_controller_to_app()
+signup()

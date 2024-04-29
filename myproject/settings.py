@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-_e-abr9olp&bfx_^m!n#t-)spcox=_$ph!k#@0enwgcvec9dvy
 DEBUG = True
 
 # Add the hostname you want to use
-ALLOWED_HOSTS = ['127.0.0.1', '123.193.99.66']
+ALLOWED_HOSTS = ['127.0.0.1', '123.193.99.66', '10.0.2.2']
 
 
 # Application definition
@@ -54,7 +54,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    # 'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
