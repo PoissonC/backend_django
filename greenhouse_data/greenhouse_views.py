@@ -10,6 +10,12 @@ from datetime import datetime
 from .models import *
 from .serializer import *
 
+"""
+TODO:
+1. use parent class to separate app and greenhouse api
+2. use url parameter for every api for getting information
+"""
+
 
 class CreateRealSensorAPI(APIView):
     """
@@ -64,6 +70,7 @@ class CreateRealSensorAPI(APIView):
             for realSensorID, rSensorData in rSensors.items():
                 rSensorData["greenhouse"] = greenhouse
                 rSensorData["realSensorID"] = realSensorID
+                rSensorData.setdefault("realSensorKey", realSensorID.split("_")[0])
                 rSensorSer = RealSensorSerializer()
                 rSensorSer.create(rSensorData)
 

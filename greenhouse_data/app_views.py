@@ -34,8 +34,7 @@ class CreatGreenhouseAPI(APIView):
         "address": "test_address",
         "beginDate": "2011-03-21",
         "realSensors": {
-            "AIR_SENSOR_1": {
-                "type": "airSensor",
+            "AirSensor_1": {
                 "electricity": 100,
                 "lat": 24.112,
                 "lng": 47.330,
@@ -44,8 +43,7 @@ class CreatGreenhouseAPI(APIView):
                     "airTemp": {"value": 31, "timestamp": "2024-04-03 17:04:04"},
                 }
             }
-            "AIR_SENSOR_2": {
-                "type": "airSensor",
+            "AirSensor_2": {
                 "electricity": 100,
                 "lat": 24.112,
                 "lng": 47.330,
@@ -89,26 +87,34 @@ class CreatGreenhouseAPI(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        user_id = request.user.id
+        try:
+            user_id = request.user.id
 
-        payload = request.data
-        payload["owner"] = user_id
+            payload = request.data
+            payload["owner"] = request.user
 
-        # TODO: remove these lines to enable deep initialization
-        payload["realSensors"] = []
-        payload["controllers"] = []
-
-        ser = GreenhouseSerializer(data=payload)
-
-        if ser.is_valid():
-            ser.save()
+            ser = GreenhouseSerializer()
+            greenhouse_instance = ser.create(payload)
             result = {
                 "message": "greenhouse created",
-                "greenhouseUID": ser.instance.uid,
+                "greenhouseUID": greenhouse_instance.uid,
             }
             return Response(result, status=status.HTTP_201_CREATED)
 
-        return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
+            # TODO: use the code below for safer creation after overwriting the is_valid() method
+            # ser = GreenhouseSerializer(data=payload)
+
+            # if ser.is_valid():
+            #     ser.save()
+            #     result = {
+            #         "message": "greenhouse created",
+            #         "greenhouseUID": ser.instance.uid,
+            #     }
+            #     return Response(result, status=status.HTTP_201_CREATED)
+
+            # return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            raise e
 
 
 """
@@ -139,10 +145,10 @@ class DeleteGreenhouseAPI(APIView):
         # validate
         if payload["greenhouseUID"] is None:
             print("greenhouseUID is not included in request data")
-            return Response({"please include greenhouseUID in request data"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"message": "please include greenhouseUID in request data"}, status=status.HTTP_400_BAD_REQUEST)
 
         GreenhouseModel.objects.get(uid=payload["greenhouseUID"]).delete()
-        return Response({"greenhouse is deleted"}, status=status.HTTP_200_OK)
+        return Response({"message": "greenhouse is deleted"}, status=status.HTTP_200_OK)
 
 
 class DeleteRealSensorAPI(APIView):
@@ -170,10 +176,10 @@ class DeleteRealSensorAPI(APIView):
         # validate
         if payload["greenhouseUID"] is None:
             print("greenhouseUID is not included in request data")
-            return Response({"please include greenhouseUID in request data"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"message": "please include greenhouseUID in request data"}, status=status.HTTP_400_BAD_REQUEST)
         if payload["realSensorID"] is None:
             print("realSensorID is not included in request data")
-            return Response("please include realSensorID in request data", status=status.HTTP_400_BAD_REQUEST)
+            return Response({"message": "please include realSensorID in request data"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             greenhouse = GreenhouseModel.objects.get(
@@ -214,10 +220,10 @@ class DeleteControllerAPI(APIView):
         # validate
         if payload["greenhouseUID"] is None:
             print("greenhouseUID is not included in request data")
-            return Response({"please include greenhouseUID in request data"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"message": "please include greenhouseUID in request data"}, status=status.HTTP_400_BAD_REQUEST)
         if payload["controllerID"] is None:
             print("controllerID is not included in request data")
-            return Response("please include controllerID in request data", status=status.HTTP_400_BAD_REQUEST)
+            return Response({"message": "please include controllerID in request data"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             greenhouse = GreenhouseModel.objects.get(
@@ -226,10 +232,10 @@ class DeleteControllerAPI(APIView):
                 greenhouse=greenhouse, controllerID=payload["controllerID"])
         except Exception as e:
             print(e)
-            return Response("content not found", status=status.HTTP_204_NO_CONTENT)
+            return Response({"message":"content not found"}, status=status.HTTP_204_NO_CONTENT)
 
         controller.delete()
-        return Response("realSensor is deleted", status=status.HTTP_200_OK)
+        return Response({"message": "realSensor is deleted"}, status=status.HTTP_200_OK)
 
 
 """
@@ -551,25 +557,26 @@ class UpdateControllerSettingAPI(APIView):
         try:
             greenhouse = GreenhouseModel.objects.get(
                 uid=request.data["greenhouseUID"])
-        except Exception as e:
+
+            notFound = []
+            for controllerID, setting in request.data["settings"].items():
+                controller = ControllerModel.objects.filter(
+                    greenhouse=greenhouse, controllerID=controllerID)
+
+                if len(controller) == 0:
+                    print("controller not found", controllerID)
+                    notFound.append(controllerID)
+                    continue
+
+                setting["controller"] = controller[0]
+                controllerSettingSer = ControllerSettingSerializer()
+                controllerSettingSer.create(setting)
+
+            return Response({"message": "controller updated", "notFound": notFound}, status=status.HTTP_200_OK)
+
+        except GreenhouseModel.DoesNotExist as e:
             print(f"greenhouse not found")
             return Response({"message": "greenhouse does not exist"}, status=status.HTTP_204_NO_CONTENT)
-
-        notFound = []
-        for controllerID, setting in request.data["settings"].items():
-            controller = ControllerModel.objects.filter(
-                greenhouse=greenhouse, controllerID=controllerID)
-
-            if len(controller) == 0:
-                print("controller not found", controllerID)
-                notFound.append(controllerID)
-                continue
-
-            setting["controller"] = controller[0]
-            controllerSettingSer = ControllerSettingSerializer()
-            controllerSettingSer.create(setting)  # NOTE: save?
-
-        return Response({"message": "controller updated", "notFound": notFound}, status=status.HTTP_200_OK)
 
 
 class UpdateRealSensorInfoAPI(APIView):

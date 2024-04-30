@@ -14,12 +14,13 @@ urlpatterns = [
     path('app/create/greenhouse', app_views.CreatGreenhouseAPI.as_view()),
     path('app/update/controller-info',
          app_views.UpdateControllerInfoAPI.as_view()),
-    path('app/update/sensor-info', app_views.UpdateRealSensorInfoAPI.as_view()),
+    path('app/update/real-sensor', app_views.UpdateRealSensorInfoAPI.as_view()),
     path('app/update/controller-setting',
          app_views.UpdateControllerSettingAPI.as_view()),
+         
     # greenhouse
     path('gh/controllers', greenhouse_views.GetAllControllerSetting.as_view()),
     path('gh/create/real-sensors', greenhouse_views.CreateRealSensorAPI.as_view()),
     path('gh/create/controllers', greenhouse_views.CreateControllerAPI.as_view()),
-    path('gh/update/sensor-data', greenhouse_views.UpdateRealSensorDataAPI.as_view()),
+    path('gh/update/sensor', greenhouse_views.UpdateRealSensorDataAPI.as_view()),
 ]

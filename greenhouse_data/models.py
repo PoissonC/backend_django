@@ -36,7 +36,9 @@ class RealSensorModel(models.Model):
 
     greenhouse = models.ForeignKey(
         GreenhouseModel, on_delete=models.CASCADE, related_name="realSensors")
-    realSensorID = models.CharField(max_length=64)
+    name = models.CharField(max_length=64) # The name of the model
+    realSensorID = models.CharField(max_length=32) # The identifiction of the models
+    realSensorKey = models.CharField(max_length=32) # The type fo the real sensor
     electricity = models.FloatField(default=100)
     lat = models.FloatField()
     lng = models.FloatField()
@@ -52,7 +54,8 @@ class SensorModel(models.Model):
 
     parentItem = models.ForeignKey(
         RealSensorModel, on_delete=models.CASCADE, related_name="sensors")
-    sensorKey = models.CharField(max_length=32)
+    name = models.CharField(max_length=64)
+    sensorKey = models.CharField(max_length=32) # The sensor key would not duplicate in one real sensor
 
 
 class ControllerModel(models.Model):
@@ -65,11 +68,12 @@ class ControllerModel(models.Model):
 
     greenhouse = models.ForeignKey(
         GreenhouseModel, on_delete=models.CASCADE, related_name="controllers")
+    name = models.CharField(max_length=64)
     controllerID = models.CharField(max_length=64)
+    controllerKey = models.CharField(max_length=32)
     electricity = models.FloatField(default=100)
     lat = models.FloatField()
     lng = models.FloatField()
-    controllerKey = models.CharField(max_length=32)
 
 
 class SensorValueHistoryModel(models.Model):

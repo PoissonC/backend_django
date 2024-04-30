@@ -10,10 +10,6 @@ The propose of the serializers is to
 2. turn the model instance into json format
 """
 
-# TODO: use only model to interact with the instance
-# TODO: remove realController layer, the greenhouse will directly control all of the controller
-# TODO: maybe seprate the serialier and deserializer
-
 """
 Sensors
 """
@@ -106,6 +102,7 @@ class SensorSerializer(serializers.ModelSerializer):
     def create(self, valData):
         """ The method is for the first declaration of the sensor"""
         valData.setdefault("parentItem", None)
+        valData.setdefault("name", "Default Sensor Name") # TODO: add default naming function
         if valData["parentItem"] is None:
             raise serializers.ValidationError(
                 {"parentItem parameter is required when creating Sensor instance"})
@@ -113,6 +110,7 @@ class SensorSerializer(serializers.ModelSerializer):
         sensor = SensorModel.objects.create(
             sensorKey=valData.pop("sensorKey"),
             parentItem=valData.pop("parentItem"),
+            name=valData.pop("name"),
         )
 
         valData["sensor"] = sensor
@@ -181,6 +179,9 @@ class RealSensorSerializer(serializers.ModelSerializer):
 
     sensors = SensorSerializer(
         many=True, allow_empty=True, required=False)
+    greenhouse = serializers.PrimaryKeyRelatedField(
+        queryset=GreenhouseModel.objects.all()
+    )
 
     class Meta:
         model = RealSensorModel
@@ -195,6 +196,7 @@ class RealSensorSerializer(serializers.ModelSerializer):
                 {"realSensorID existed in the greenhouse"})
 
     def create(self, validated_data):
+        validated_data.setdefault("name", "default name") # TODO: add map
         self.__validate(validated_data)
         sensorsValData: dict = validated_data.pop('sensors')
         realSensor = RealSensorModel.objects.create(**validated_data)
@@ -372,7 +374,11 @@ class ControllerSerializer(serializers.ModelSerializer):
     """
 
     setting = ControllerSettingSerializer()
-
+    greenhouse = serializers.PrimaryKeyRelatedField(
+        queryset=GreenhouseModel.objects.all(),
+        many=False,
+        required=False,
+    )
     class Meta:
         model = ControllerModel
         fields = '__all__'
@@ -408,6 +414,7 @@ class ControllerSerializer(serializers.ModelSerializer):
         would be labled "isCurrent" in controller setting history model. Only the latest
         setting would be labeled with "isCurrent == True" in ControllerSettingHistoryModel
         """
+        validated_data.setdefault("name", "default name") # TODO: add defult naming function
         self.__validate(validated_data)
         settingData = validated_data.pop("setting")
 
@@ -465,6 +472,7 @@ class GreenhouseSerializer(serializers.ModelSerializer):
     owner = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(),
         many=False,
+        required=False,
     )
     realSensors = RealSensorSerializer(
         many=True, allow_null=True, allow_empty=True, required=False)
@@ -479,30 +487,54 @@ class GreenhouseSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         return super().update(instance, validated_data)
 
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+
+        return attrs
+
     def create(self, validated_data):
-        # pop out real_sensors dictionary
-        realSensorDatas = validated_data.pop('realSensors')
-        # pop out real_controller dictionary
-        controllerDatas = validated_data.pop('controllers')
+        try:
+            # pop out real_sensors dictionary
+            realSensorDatas = validated_data.pop('realSensors')
+            # pop out real_controller dictionary
+            controllerDatas = validated_data.pop('controllers')
 
-        greenhouse = GreenhouseModel.objects.create(**validated_data)
+            greenhouse = GreenhouseModel.objects.create(**validated_data)
 
-        # create real sensors
-        realSensorSerializer = self.fields['realSensors']
-        for rSensor in realSensorDatas:
-            rSensor["greenhouse"] = greenhouse
+            # create real sensors
+            # TODO: wrap it as a function
+            # TODO: use ser.save() method instead
+            realSensorSerializer = self.fields['realSensors']
+            realSensorList = []
+            for rSensorID, rSensorData in realSensorDatas.items():
+                rSensorData["greenhouse"] = greenhouse
+                rSensorData["realSensorID"] = rSensorID
+                rSensorData.setdefault("realSensorKey", rSensorID.split("_")[0])
+                rSensorData.setdefault("name", "Real Sensor") # TODO: add name mapper function later
 
-        realSensorSerializer.create(realSensorDatas)
+            realSensorInstances = realSensorSerializer.create(realSensorList)
 
-        # create real controllers
-        controllerSerializer = self.fields['controllers']
-        for controller in controllerDatas:
-            # NOTE: we can try using PrimaryKeyField for this kind of things, so we only has to input greenhouseUID instead of an instance
-            controller["greenhouse"] = greenhouse
+            # create real controllers
+            controllerSerializer = self.fields['controllers']
+            controllerList = []
+            for controllerID, controllerData in controllerDatas.items():
+                controllerData["greenhouse"] = greenhouse
+                controllerData["controllerID"] = controllerID
+                controllerData.setdefault("controllerKey", controllerID.split("_")[0])
+                controllerData.setdefault("name", "Controller") # TODOL add name mapper function later
+                controllerList.append(controllerData)
+            controllerInstances = controllerSerializer.create(controllerList)
 
-        controllerSerializer.create(controllerDatas)
-
-        return greenhouse
+            return greenhouse
+        
+        except Exception as e:
+            print(e)
+            
+            if greenhouse is not None:
+                greenhouse.delete() # the sub items would be deleted as well
+            
+            raise e
+            
 
     def to_representation(self, instance: GreenhouseModel):
         ret = super().to_representation(instance)

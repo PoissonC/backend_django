@@ -2,13 +2,13 @@ import requests
 import json
 import datetime
 
-token = "f23534238b9f284e220bd811bb02bd7743269200"
+token = "4e14c841cdff891c742d66572806e5682890039d"
 # token = "e0a8616dda7c0cf5f3451b60b430f4e19274ce4a"
-sample_greenhouse_uid = "bcd3efb6-a5e8-498d-bb90-6d644bbaa20a"
+sample_greenhouse_uid = "31af060a28da4c1295d0331c5a4f4167"
 # sample_greenhouse_uid = "f3d3072f-b666-4aeb-b920-8a97a59cf713"
 
-host = "127.0.0.1:8000"
-# host = "123.193.99.66:9000"
+# host = "127.0.0.1:8000"
+host = "123.193.99.66:9000"
 
 
 def api_test(func):
@@ -75,11 +75,64 @@ greenhouse creation
 
 
 @api_test
-def create_greenhosue() -> requests.Response:
+def create_greenhouse() -> requests.Response:
     payload = json.dumps({
-        "name": "溫室COOL",
+        "name": "溫室NEW",
         "address": "台北市新生南路三段2巷3號4樓",
-        "beginDate": "2001-03-21",
+        "beginDate": "2003-03-21",
+        "realSensors": {
+            "AirSensor_0": {
+                "electricity": 100,
+                "lat": 24.112,
+                "lng": 47.330,
+                "sensors": {
+                    "airHumidity": {"value": 22, "timestamp": "2024-04-03 17:04:04"},
+                    "airTemp": {"value": 31, "timestamp": "2024-04-03 17:04:04"},
+                }
+            },
+            "AirSensor_1": {
+                "electricity": 100,
+                "lat": 24.112,
+                "lng": 47.330,
+                "sensors": {
+                    "airHumidity": {"value": 22, "timestamp": "2024-04-03 17:04:04"},
+                    "airTemp": {"value": 31, "timestamp": "2024-04-03 17:04:04"},
+                }
+            }
+        },
+        "controllers": {
+            "Watering_0": {
+                "controllerKey": "evalve",
+                "electricity": 100,
+                "lat": 24.112,
+                "lng": 47.330,
+                "setting": {
+                    "on": False,
+                    "manualControl": False,
+                    "timestamp": "2024-04-03 17:04:04",
+                    "evalveSchedules": [
+                        {"cutHumidity": 30, "duration": 15,
+                            "startTime": "15:00"},
+                        {"cutHumidity": 30, "duration": 15,
+                            "startTime": "16:00"},
+                    ],
+                }
+            },
+            "Fan_0": {
+                "controllerKey": "fan",
+                "electricity": 100,
+                "lat": 24.112,
+                "lng": 47.330,
+                "setting": {
+                    "on": False,
+                    "manualControl": False,
+                    "timestamp": "2024-04-03 17:04:04",
+                    "openTemp": 21,
+                    "closeTemp": 20,
+                }
+
+            }
+        }
     })
 
     res = requests.post(
@@ -100,7 +153,7 @@ def create_real_sensor() -> requests.Response:
         {
             "greenhouseUID": sample_greenhouse_uid,
             "realSensors": {
-                "AirSensor_0": {
+                "AirSensor_14": {
                     "electricity": 100,
                     "lat": 24.112,
                     "lng": 47.330,
@@ -109,15 +162,15 @@ def create_real_sensor() -> requests.Response:
                         "airTemp": {"value": 31, "timestamp": "2024-04-03 17:04:04"},
                     }
                 },
-                "AirSensor_1": {
-                    "electricity": 100,
-                    "lat": 24.112,
-                    "lng": 47.330,
-                    "sensors": {
-                        "airHumidity": {"value": 22, "timestamp": "2024-04-03 17:04:04"},
-                        "airTemp": {"value": 31, "timestamp": "2024-04-03 17:04:04"},
-                    }
-                }
+                # "AirSensor_3": {
+                #     "electricity": 100,
+                #     "lat": 24.112,
+                #     "lng": 47.330,
+                #     "sensors": {
+                #         "airHumidity": {"value": 22, "timestamp": "2024-04-03 17:04:04"},
+                #         "airTemp": {"value": 31, "timestamp": "2024-04-03 17:04:04"},
+                #     }
+                # }
             },
         }
     )
@@ -445,4 +498,4 @@ def update_sensor_data():
     return res
 
 
-create_real_sensor()
+create_greenhouse()
