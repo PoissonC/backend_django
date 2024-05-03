@@ -232,7 +232,7 @@ class DeleteControllerAPI(APIView):
                 greenhouse=greenhouse, controllerID=payload["controllerID"])
         except Exception as e:
             print(e)
-            return Response({"message":"content not found"}, status=status.HTTP_204_NO_CONTENT)
+            return Response({"message": "content not found"}, status=status.HTTP_204_NO_CONTENT)
 
         controller.delete()
         return Response({"message": "realSensor is deleted"}, status=status.HTTP_200_OK)
@@ -277,15 +277,149 @@ class GetGreenhouseBasicInfoAPI(APIView):
         )
 
 
-class GetGreenhouseDataAPI(APIView):
+class GetGreenhouseDataAPI(APIView):  # TODO: check
     """
     Return a list of greenhouseMainData map for the user
+
+    ```
+    [
+        {
+        "greenhouseUID": "0argibdfhe",
+        "name": "Greenhouse",
+        "address": "Taipei, Taiwan",
+        "beginTime": "2001-03-21",
+        "sensors": {
+          "airHumidity": [
+            {
+              "currentValue": 32.0,
+              "itemName": "North AirSensor",
+              "realSensorID": "AirSensor_1",
+            },
+            {
+              "currentValue": 32.0,
+              "itemName": "North AirSensor",
+              "realSensorID": "AirSensor_2",
+            },
+          ],
+          "soidHumidity": [
+            {
+              "currentValue": 32.0,
+              "itemName": "North AirSensor",
+              "realSensorID": "AirSensor_1",
+            },
+            {
+              "currentValue": 32.0,
+              "itemName": "North AirSensor",
+              "realSensorID": "AirSensor_2",
+            },
+          ],
+        },
+        "controllers": {
+          "evalve": [
+            {
+              "on": true,
+              "manualControl": false,
+              "itemName": "電磁罰1",
+              "lat": 24.666,
+              "lng": 25.77,
+              "electricity": 0.9,
+              "setting": {
+                "cutHumidiy": [20.0, 30.0],
+                "duration": [2.0, 3.0],
+                "startTime": ["12:00:00", "14:00:00"]
+              },
+            },
+            {
+              "on": true,
+              "manualControl": false,
+              "itemName": "電磁罰2",
+              "lat": 24.666,
+              "lng": 25.77,
+              "electricity": 0.9,
+              "setting": {
+                "cutHumidiy": [20.0, 30.0],
+                "duration": [2.0, 3.0],
+                "startTime": ["12:00:00", "14:00:00"]
+              },
+            },
+          ],
+          "fan": [
+            {
+              "on": true,
+              "manualControl": false,
+              "itemName": "fan",
+              "lat": 24.666,
+              "lng": 25.77,
+              "electricity": 0.9,
+              "setting": {
+                "closeTemp": 32,
+                "openTemp": 34,
+              }
+            },
+            {
+              "on": true,
+              "manualControl": false,
+              "itemName": "fan",
+              "lat": 24.666,
+              "lng": 25.77,
+              "electricity": 0.9,
+              "setting": {
+                "closeTemp": 32,
+                "openTemp": 34,
+              }
+            }
+          ]
+        },
+        "realSensors": {
+          "AirSensor_1": {"name": "My cool air sensor 1", "electricity": 0.8, "lat": 32.1, "lng": 32.1},
+          "AirSensor_2": {"name": "My cool air sensor 2", "electricity": 0.8, "lat": 32.1, "lng": 32.3},
+        }
+      }
+    ]
+    ```
 
     - method: GET
     - authentication: "Authorization": "Token <token>"
     - return: list of greenhouseMainData
     """
     permission_classes = [IsAuthenticated]
+
+    @staticmethod
+    def parseEvalvSchedules(self, controller):
+
+        if controller["setting"].setdefault("evalveSchedules", None):
+            scheds = controller["setting"].pop("evalveSchedules")
+            for sched in scheds:
+                controller["setting"].setdefault(
+                    "cutHumidity").append(sched["cutHumidity"])
+                controller["setting"].setdefault(
+                    "duration").append(sched["duration"])
+                controller["setting"].setdefault(
+                    "startTime").append(sched["startTime"])
+
+        return controller
+
+    def parseToAppFormat(self, data: dict):
+        data["realSensors"] = sorted(data["realSensors"],
+                                     key=lambda ele: ele["realSensorID"])
+
+        data["sensors"] = {}
+        for rS in data["realSensors"]:
+            for s in rS.pop("sensors"):
+                data["sensors"].setdefault(s.pop("sensorKey"), []).append(s)
+
+        controllers = sorted(data.pop("controllers"),
+                             key=lambda ele: ele["controllerID"])
+
+        data["controllers"] = {}
+        for c in controllers:
+            c["on"] = c["setting"].pop("on")
+            c["manualControl"] = c["setting"].pop("manualControl")
+            c = self.parseEvalvSchedules(controller=c)
+
+            data["controllers"].setdefault(c["controllerKey"], []).append(c)
+
+        return data
 
     def get(self, request):
         user = request.user  # instance ?
@@ -295,7 +429,8 @@ class GetGreenhouseDataAPI(APIView):
 
         for g in greenhouses:
             gSer = GreenhouseSerializer(g)
-            resultList.append(gSer.data)
+            retData = self.parseToAppFormat(gSer.data)
+            resultList.append(retData)
 
         return Response(
             resultList,
@@ -440,7 +575,7 @@ class GetSensorCurrentDataToApp(APIView):
             for sensor in selectedSensors:
                 sensorData = SensorSerializer(sensor).data
                 sensorData["realSensorID"] = sensorData.pop(
-                    "parentItem").realSensorID
+                    "realSensorID").realSensorID
                 ret[sensorKey].append(sensorData)
 
         return Response(ret, status=status.HTTP_200_OK)

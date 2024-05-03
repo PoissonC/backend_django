@@ -19,7 +19,8 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='ControllerModel',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('id', models.BigAutoField(auto_created=True,
+                 primary_key=True, serialize=False, verbose_name='ID')),
                 ('controllerID', models.CharField(max_length=64)),
                 ('electricity', models.FloatField(default=100)),
                 ('lat', models.FloatField()),
@@ -33,14 +34,16 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='ControllerSettingHistoryModel',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('id', models.BigAutoField(auto_created=True,
+                 primary_key=True, serialize=False, verbose_name='ID')),
                 ('timestamp', models.DateTimeField()),
                 ('isCurrent', models.BooleanField(default=True)),
                 ('on', models.BooleanField()),
                 ('manualControl', models.BooleanField(default=False)),
                 ('openTemp', models.FloatField(null=True)),
                 ('closeTemp', models.FloatField(null=True)),
-                ('controller', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='controllerHistory', to='greenhouse_data.controllermodel')),
+                ('controller', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,
+                 related_name='controllerHistory', to='greenhouse_data.controllermodel')),
             ],
             options={
                 'db_table': 'controllerHistoryTable',
@@ -50,12 +53,15 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='GreenhouseModel',
             fields=[
-                ('uid', models.UUIDField(default=uuid.uuid4, primary_key=True, serialize=False)),
+                ('uid', models.UUIDField(default=uuid.uuid4,
+                 primary_key=True, serialize=False)),
                 ('name', models.CharField(max_length=32)),
                 ('address', models.CharField(max_length=128)),
                 ('beginDate', models.DateField()),
-                ('photo', models.ImageField(null=True, upload_to='image/greenhouse_photo', verbose_name='Greenhouse Avatar')),
-                ('owner', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='greenhouse', to=settings.AUTH_USER_MODEL)),
+                ('photo', models.ImageField(
+                    null=True, upload_to='image/greenhouse_photo', verbose_name='Greenhouse Avatar')),
+                ('owner', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL,
+                 related_name='greenhouse', to=settings.AUTH_USER_MODEL)),
             ],
             options={
                 'db_table': 'greenhouseTable',
@@ -65,12 +71,14 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='RealSensorModel',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('id', models.BigAutoField(auto_created=True,
+                 primary_key=True, serialize=False, verbose_name='ID')),
                 ('realSensorID', models.CharField(max_length=64)),
                 ('electricity', models.FloatField(default=100)),
                 ('lat', models.FloatField()),
                 ('lng', models.FloatField()),
-                ('greenhouse', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='realSensors', to='greenhouse_data.greenhousemodel')),
+                ('greenhouse', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,
+                 related_name='realSensors', to='greenhouse_data.greenhousemodel')),
             ],
             options={
                 'db_table': 'realSensorTable',
@@ -79,9 +87,11 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='SensorModel',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('id', models.BigAutoField(auto_created=True,
+                 primary_key=True, serialize=False, verbose_name='ID')),
                 ('sensorKey', models.CharField(max_length=32)),
-                ('parentItem', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='sensors', to='greenhouse_data.realsensormodel')),
+                ('realSensorID', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,
+                 related_name='sensors', to='greenhouse_data.realsensormodel')),
             ],
             options={
                 'db_table': 'sensorTable',
@@ -90,11 +100,13 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='SensorValueHistoryModel',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('id', models.BigAutoField(auto_created=True,
+                 primary_key=True, serialize=False, verbose_name='ID')),
                 ('timestamp', models.DateTimeField()),
                 ('isCurrent', models.BooleanField()),
                 ('value', models.FloatField()),
-                ('sensor', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='sensorHistory', to='greenhouse_data.sensormodel')),
+                ('sensor', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL,
+                 related_name='sensorHistory', to='greenhouse_data.sensormodel')),
             ],
             options={
                 'db_table': 'sensorHistoryTable',
@@ -104,11 +116,13 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='EvalveScheduleModel',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('id', models.BigAutoField(auto_created=True,
+                 primary_key=True, serialize=False, verbose_name='ID')),
                 ('cutHumidity', models.FloatField(default=35)),
                 ('duration', models.DurationField()),
                 ('startTime', models.TimeField(default=datetime.time(16, 0))),
-                ('controllerSetting', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='evalveSchedules', to='greenhouse_data.controllersettinghistorymodel')),
+                ('controllerSetting', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,
+                 related_name='evalveSchedules', to='greenhouse_data.controllersettinghistorymodel')),
             ],
             options={
                 'db_table': 'evalveScheduleTable',
@@ -117,6 +131,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='controllermodel',
             name='greenhouse',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='realControllers', to='greenhouse_data.greenhousemodel'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,
+                                    related_name='realControllers', to='greenhouse_data.greenhousemodel'),
         ),
     ]

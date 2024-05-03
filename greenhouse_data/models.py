@@ -15,8 +15,8 @@ class GreenhouseModel(models.Model):
         ordering = ["owner", "-beginDate"]
 
     owner = models.ForeignKey(
-        User, null=True, on_delete=models.SET_NULL, related_name="greenhouse")
-    uid = models.UUIDField(primary_key=True, default=uuid.uuid4)
+        User, null=True, on_delete=models.SET_NULL, related_name="greenhouses")
+    greenhouseUID = models.UUIDField(primary_key=True, default=uuid.uuid4)
     name = models.CharField(max_length=32)
     address = models.CharField(max_length=128)
     beginDate = models.DateField()  # format YYYY-MM-DD
@@ -34,11 +34,13 @@ class RealSensorModel(models.Model):
     class Meta:
         db_table = "realSensorTable"
 
-    greenhouse = models.ForeignKey(
+    greenhouseUID = models.ForeignKey(
         GreenhouseModel, on_delete=models.CASCADE, related_name="realSensors")
-    name = models.CharField(max_length=64) # The name of the model
-    realSensorID = models.CharField(max_length=32) # The identifiction of the models
-    realSensorKey = models.CharField(max_length=32) # The type fo the real sensor
+    name = models.CharField(max_length=64)  # The name of the model
+    # The identifiction of the models
+    realSensorID = models.CharField(max_length=32)
+    realSensorKey = models.CharField(
+        max_length=32)  # The type fo the real sensor
     electricity = models.FloatField(default=100)
     lat = models.FloatField()
     lng = models.FloatField()
@@ -52,10 +54,11 @@ class SensorModel(models.Model):
     class Meta:
         db_table = "sensorTable"
 
-    parentItem = models.ForeignKey(
+    realSensorID = models.ForeignKey(
         RealSensorModel, on_delete=models.CASCADE, related_name="sensors")
-    name = models.CharField(max_length=64)
-    sensorKey = models.CharField(max_length=32) # The sensor key would not duplicate in one real sensor
+    itemName = models.CharField(max_length=64)
+    # The sensor key would not duplicate in one real sensor
+    sensorKey = models.CharField(max_length=32)
 
 
 class ControllerModel(models.Model):
@@ -66,9 +69,9 @@ class ControllerModel(models.Model):
     class Meta:
         db_table = "controllerTable"
 
-    greenhouse = models.ForeignKey(
+    greenhouseUID = models.ForeignKey(
         GreenhouseModel, on_delete=models.CASCADE, related_name="controllers")
-    name = models.CharField(max_length=64)
+    itemName = models.CharField(max_length=64)
     controllerID = models.CharField(max_length=64)
     controllerKey = models.CharField(max_length=32)
     electricity = models.FloatField(default=100)

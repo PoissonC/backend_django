@@ -70,7 +70,8 @@ class CreateRealSensorAPI(APIView):
             for realSensorID, rSensorData in rSensors.items():
                 rSensorData["greenhouse"] = greenhouse
                 rSensorData["realSensorID"] = realSensorID
-                rSensorData.setdefault("realSensorKey", realSensorID.split("_")[0])
+                rSensorData.setdefault(
+                    "realSensorKey", realSensorID.split("_")[0])
                 rSensorSer = RealSensorSerializer()
                 rSensorSer.create(rSensorData)
 
@@ -344,7 +345,7 @@ class UpdateRealSensorDataAPI(APIView):
                 for sensorKey, sensorValueData in realSensorData.items():
 
                     sensor = SensorModel.objects.get(
-                        parentItem=realSensor[0], sensorKey=sensorKey)
+                        realSensorID=realSensor[0], sensorKey=sensorKey)
 
                     sensorValueData["sensor"] = sensor
                     sensorValueSer = SensorValueHistorySerializer()

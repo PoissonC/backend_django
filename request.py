@@ -2,13 +2,11 @@ import requests
 import json
 import datetime
 
-token = "4e14c841cdff891c742d66572806e5682890039d"
-# token = "e0a8616dda7c0cf5f3451b60b430f4e19274ce4a"
 sample_greenhouse_uid = "31af060a28da4c1295d0331c5a4f4167"
 # sample_greenhouse_uid = "f3d3072f-b666-4aeb-b920-8a97a59cf713"
 
-# host = "127.0.0.1:8000"
-host = "123.193.99.66:9000"
+host = "127.0.0.1:8000"
+# host = "123.193.99.66:9000"
 
 
 def api_test(func):
@@ -21,6 +19,7 @@ def api_test(func):
             object = json.loads(res.text)
             with open("result.json", "w") as f:
                 json.dump(object, f, indent=2)
+                return object
         except Exception as e:
             print(e)
     return wrap
@@ -67,6 +66,9 @@ def login() -> requests.Response:
     )
 
     return res
+
+
+token = login()["token"]
 
 
 """
@@ -498,4 +500,4 @@ def update_sensor_data():
     return res
 
 
-create_greenhouse()
+get_greenhouse()
