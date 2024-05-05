@@ -549,12 +549,15 @@ class GetGreenhouseDataAPI(APIView):  # TODO: check
         return controller
 
     def parseToAppFormat(self, data: dict):
-        data["realSensors"] = sorted(data["realSensors"],
-                                     key=lambda ele: ele["realSensorID"])
+        realSensors = sorted(data["realSensors"],
+                             key=lambda ele: ele["realSensorID"])
 
         data["sensors"] = {}
-        for rS in data["realSensors"]:
-            for s in rS.pop("sensors"):
+        data["realSensors"] = {}
+        for rS in realSensors:
+            sensors = rS.pop("sensors")
+            data["realSensors"][rS["realSensorID"]] = rS
+            for s in sensors:
                 data["sensors"].setdefault(s.pop("sensorKey"), []).append(s)
 
         controllers = sorted(data.pop("controllers"),

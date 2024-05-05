@@ -533,4 +533,4 @@ def update_sensor_data():
     return res
 
 
-update_sensor_data()
+get_greenhouse()

@@ -1,4 +1,136 @@
-{
-  "message": "sensor history updated",
-  "notFound": []
-}
+[
+  {
+    "greenhouseUID": "cb91a232-d989-487b-970d-ae717352281b",
+    "owner": 1,
+    "realSensors": {
+      "AirSensor_0": {
+        "id": 1,
+        "greenhouse": "cb91a232-d989-487b-970d-ae717352281b",
+        "itemName": "感測器",
+        "realSensorID": "AirSensor_0",
+        "realSensorKey": "AirSensor",
+        "electricity": 97.0,
+        "lat": 24.112,
+        "lng": 47.33
+      },
+      "AirSensor_1": {
+        "id": 2,
+        "greenhouse": "cb91a232-d989-487b-970d-ae717352281b",
+        "itemName": "感測器",
+        "realSensorID": "AirSensor_1",
+        "realSensorKey": "AirSensor",
+        "electricity": 100.0,
+        "lat": 24.112,
+        "lng": 47.33
+      }
+    },
+    "name": "test_greenhouse",
+    "address": "test_address",
+    "beginDate": "2011-03-21",
+    "photo": null,
+    "sensors": {
+      "airHumidity": [
+        {
+          "itemName": "感測項目",
+          "realSensorID": 1,
+          "value": 22.0
+        },
+        {
+          "itemName": "感測項目",
+          "realSensorID": 2,
+          "value": 22.0
+        }
+      ],
+      "airTemp": [
+        {
+          "itemName": "感測項目",
+          "realSensorID": 1,
+          "value": 31.0
+        },
+        {
+          "itemName": "感測項目",
+          "realSensorID": 2,
+          "value": 31.0
+        }
+      ]
+    },
+    "controllers": {
+      "evalve": [
+        {
+          "greenhouseUID": "cb91a232-d989-487b-970d-ae717352281b",
+          "controllerID": "evalve_0",
+          "controllerKey": "evalve",
+          "electricity": 100.0,
+          "itemName": "控制器",
+          "lat": 24.112,
+          "lng": 47.33,
+          "setting": {
+            "id": 1,
+            "controller": 1,
+            "openTemp": null,
+            "closeTemp": null,
+            "timestamp": "2024-04-03T17:04:04Z",
+            "isCurrent": true,
+            "cutHumidity": 30.0,
+            "duration": [
+              "00:00:15",
+              "00:00:15"
+            ],
+            "startTime": [
+              "15:00:00",
+              "16:00:00"
+            ]
+          },
+          "on": true,
+          "manualControl": false
+        }
+      ],
+      "fan": [
+        {
+          "greenhouseUID": "cb91a232-d989-487b-970d-ae717352281b",
+          "controllerID": "fan_0",
+          "controllerKey": "fan",
+          "electricity": 100.0,
+          "itemName": "控制器",
+          "lat": 24.112,
+          "lng": 47.33,
+          "setting": {
+            "id": 3,
+            "controller": 3,
+            "openTemp": 21.0,
+            "closeTemp": 20.0,
+            "evalveSchedules": [],
+            "timestamp": "2024-04-03T17:04:04Z",
+            "isCurrent": true,
+            "cutHumidity": null
+          },
+          "on": true,
+          "manualControl": false
+        }
+      ],
+      "shade": [
+        {
+          "greenhouseUID": "cb91a232-d989-487b-970d-ae717352281b",
+          "controllerID": "shade_0",
+          "controllerKey": "shade",
+          "electricity": 100.0,
+          "itemName": "控制器",
+          "lat": 24.112,
+          "lng": 47.33,
+          "setting": {
+            "id": 2,
+            "controller": 2,
+            "openTemp": 21.0,
+            "closeTemp": 20.0,
+            "evalveSchedules": [],
+            "timestamp": "2024-04-03T17:04:04Z",
+            "isCurrent": true,
+            "cutHumidity": null
+          },
+          "on": true,
+          "manualControl": false
+        }
+      ]
+    }
+  }
+]
