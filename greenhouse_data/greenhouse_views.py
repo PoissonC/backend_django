@@ -72,6 +72,7 @@ class RealSensorBaseAPI(APIView):
                     realSensor = RealSensorModel.objects.get(
                         greenhouse=greenhouseUID, realSensorID=rID)
                 except RealSensorModel.DoesNotExist:
+                    print("realSensor not exist, default to create mode")
                     realSensor = None
 
                 rData["greenhouse"] = greenhouseUID

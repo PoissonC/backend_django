@@ -57,7 +57,7 @@ class SensorValueHistorySerializer(serializers.ModelSerializer):
         instance. In the `create` method from controller setting serializer,
         the last current data will be set to `isCurrent = False` automatically.
         """
-        if validated_data["sensor"] is None:
+        if validated_data.setdefault("sensor", None) is None:
             raise serializers.ValidationError(
                 {"sensor instance is not provided"})
         self.__pushLastCurrent(validated_data["sensor"])
@@ -318,7 +318,7 @@ class ControllerSettingSerializer(serializers.ModelSerializer):
         """
         controllerSetting = None
         try:
-            if validated_data["controller"] is None:
+            if validated_data.setdefault("controller", None) is None:
                 raise serializers.ValidationError(
                     {"controller instance is not provided"})
             self.__pushLastCurrent(validated_data["controller"])
