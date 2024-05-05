@@ -2,6 +2,8 @@ from datetime import datetime, timedelta
 
 from django.contrib.auth.models import User
 from rest_framework import serializers
+from rest_framework.exceptions import ErrorDetail, ValidationError
+from django.core.exceptions import ValidationError as DjangoValidationError
 from greenhouse_data.models import *
 
 """
@@ -57,7 +59,7 @@ class SensorValueHistorySerializer(serializers.ModelSerializer):
         """
         if validated_data["sensor"] is None:
             raise serializers.ValidationError(
-                {"controller instance is not provided"})
+                {"sensor instance is not provided"})
         self.__pushLastCurrent(validated_data["sensor"])
         sensorData = SensorValueHistoryModel.objects.create(
             **validated_data)
@@ -77,7 +79,7 @@ class SensorSerializer(serializers.ModelSerializer):
     {
         "realSensorID": realSensorInstance,
         "sensorKey": "airHumidity",
-        "currentValue": 22,
+        "value": 22,
         "timestamp": "2024-04-03 17:04:04",
     }
     ```
@@ -87,13 +89,18 @@ class SensorSerializer(serializers.ModelSerializer):
     {
         "realSensorID": realSensorInstance,
         "sensorKey": "airHumidity",
-        "currentValue": 22,
+        "value": 22,
     }
     ```
     """
 
     timestamp = serializers.DateTimeField()  # YYYY-MM-DD hh:mm:ss
-    currentValue = serializers.FloatField()
+    itemName = serializers.CharField(required=False, allow_null=True)
+    value = serializers.FloatField()
+    realSensor = serializers.PrimaryKeyRelatedField(
+        queryset=RealSensorModel.objects.all(),
+        required=False,
+    )
 
     class Meta:
         model = SensorModel
@@ -101,20 +108,21 @@ class SensorSerializer(serializers.ModelSerializer):
 
     def create(self, valData):
         """ The method is for the first declaration of the sensor"""
-        valData.setdefault("realSensorID", None)
+        valData.setdefault("realSensor", None)
         # TODO: add default naming function
-        valData.setdefault("name", "Default Sensor Name")
-        if valData["realSensorID"] is None:
+        valData.setdefault("itemName", "感測器")
+        if valData["realSensor"] is None:
             raise serializers.ValidationError(
-                {"realSensorID parameter is required when creating Sensor instance"})
+                {"realSensor parameter is required when creating Sensor instance"})
 
         sensor = SensorModel.objects.create(
             sensorKey=valData.pop("sensorKey"),
-            realSensorID=valData.pop("realSensorID"),
-            name=valData.pop("name"),
+            realSensor=valData.pop("realSensor"),
+            itemName=valData.pop("itemName"),
         )
 
         valData["sensor"] = sensor
+        valData["value"] = valData.pop("value")
         sensorValueSer = SensorValueHistorySerializer()
         sensorValueSer.create(valData)
         return sensor
@@ -123,14 +131,14 @@ class SensorSerializer(serializers.ModelSerializer):
         ret = {
             "sensorKey": instance.sensorKey,
             "itemName": instance.itemName,
-            "realSensorID": instance.realSensorID.id,
+            "realSensorID": instance.realSensor.id,
         }
         currentSensorData = list(SensorValueHistoryModel.objects.filter(
             sensor=instance).filter(isCurrent=True))
         if len(currentSensorData) == 0:
-            ret["currentValue"] = None
+            ret["value"] = None
             return ret
-        ret["currentValue"] = currentSensorData[0].value
+        ret["value"] = currentSensorData[0].value
 
         return ret
 
@@ -143,7 +151,7 @@ class RealSensorSerializer(serializers.ModelSerializer):
     ```
     {
         "greenhouse": greenhouseInstance,
-        "realSensorID": "airSensor", # originally the key of request data
+        "realSensor": "airSensor", # originally the key of request data
         "electricity": 100,
         "lat": 24.112,
         "lng": 47.330,
@@ -167,12 +175,12 @@ class RealSensorSerializer(serializers.ModelSerializer):
             {
                 'sensorKey': 'airHumidity',
                 'realSensorID': realSensorInstance,
-                'currentValue': 22.0
+                'value': 22.0
             },
             {
                 'sensorKey': 'airTemp',
                 'realSensorID': realSensorInstance,
-                'currentValue': 31.0
+                'value': 31.0
             }
         ],
     }
@@ -182,12 +190,19 @@ class RealSensorSerializer(serializers.ModelSerializer):
     sensors = SensorSerializer(
         many=True, allow_empty=True, required=False)
     greenhouse = serializers.PrimaryKeyRelatedField(
-        queryset=GreenhouseModel.objects.all()
+        queryset=GreenhouseModel.objects.all(),
+        required=False,
     )
+    itemName = serializers.CharField(required=False, allow_null=True)
 
     class Meta:
         model = RealSensorModel
         fields = '__all__'
+
+    def run_validation(self, data=...):
+        data["sensors"] = toList(data.setdefault(
+            "sensors", {}), "sensor", "感測項目")
+        return super().run_validation(data)
 
     def __validate(self, validated_data):
         # validate id
@@ -198,19 +213,22 @@ class RealSensorSerializer(serializers.ModelSerializer):
                 {"realSensorID existed in the greenhouse"})
 
     def create(self, validated_data):
-        validated_data.setdefault("name", "default name")  # TODO: add map
-        self.__validate(validated_data)
-        sensorsValData: dict = validated_data.pop('sensors')
-        realSensor = RealSensorModel.objects.create(**validated_data)
+        realSensor = None
 
-        sensorsSerializer = self.fields['sensors']
-        sensorList = []
-        for key, sensor in sensorsValData.items():
-            sensor["realSensorID"] = realSensor
-            sensor["sensorKey"] = key
-            sensorList.append(sensor)
-        sensorsSerializer.create(sensorList)
+        try:
+            validated_data.setdefault("itemName", "感測器")  # TODO: add map
+            self.__validate(validated_data)
+            sensorList: list = validated_data.pop('sensors')
+            realSensor = RealSensorModel.objects.create(**validated_data)
 
+            sensorsSerializer = self.fields['sensors']
+            for s in sensorList:
+                s.setdefault("realSensor", realSensor)
+            sensorsSerializer.create(sensorList)
+        except Exception as e:
+            if realSensor:
+                realSensor.delete()
+            raise e
         return realSensor
 
     def to_representation(self, instance):
@@ -229,15 +247,17 @@ class EValveScheduleSerializer(serializers.ModelSerializer):
     """
 
     duration = serializers.DurationField()
+    controllerSetting = serializers.PrimaryKeyRelatedField(
+        queryset=ControllerSettingHistoryModel.objects.all(),
+        required=False,
+    )
 
     class Meta:
         model = EvalveScheduleModel
         # generally controllerSetting is also required for creation
-        fields = ["cutHumidity", "duration", "startTime"]
+        fields = "__all__"
 
     def create(self, validated_data):
-        validated_data["duration"] = datetime.timedelta(
-            seconds=validated_data["duration"])
         instance = EvalveScheduleModel.objects.create(**validated_data)
         return instance
 
@@ -261,6 +281,10 @@ class ControllerSettingSerializer(serializers.ModelSerializer):
     ```
     """
 
+    controller = serializers.PrimaryKeyRelatedField(
+        queryset=ControllerModel.objects.all(),
+        required=False
+    )
     openTemp = serializers.FloatField(allow_null=True, required=False)
     closeTemp = serializers.FloatField(allow_null=True, required=False)
     evalveSchedules = EValveScheduleSerializer(
@@ -292,25 +316,32 @@ class ControllerSettingSerializer(serializers.ModelSerializer):
         data. In the `create` method from controller setting serializer, the last current
         data will be set to `isCurrent = False` automatically.
         """
-        if validated_data["controller"] is None:
-            raise serializers.ValidationError(
-                {"controller instance is not provided"})
-        self.__pushLastCurrent(validated_data["controller"])
+        controllerSetting = None
+        try:
+            if validated_data["controller"] is None:
+                raise serializers.ValidationError(
+                    {"controller instance is not provided"})
+            self.__pushLastCurrent(validated_data["controller"])
 
-        validated_data.setdefault("openTemp", None)
-        validated_data.setdefault("closeTemp", None)
-        validated_data.setdefault("evalveSchedules", None)
-        evalveSchedulesData = validated_data.pop("evalveSchedules")
+            validated_data.setdefault("openTemp", None)
+            validated_data.setdefault("closeTemp", None)
+            validated_data.setdefault("evalveSchedules", None)
+            validated_data.setdefault("cutHumidity", None)
+            evalveSchedulesData = validated_data.pop("evalveSchedules")
 
-        controllerSetting = ControllerSettingHistoryModel.objects.create(
-            **validated_data)
+            controllerSetting = ControllerSettingHistoryModel.objects.create(
+                **validated_data)
 
-        if evalveSchedulesData is not None:
-            eSer = self.fields["evalveSchedules"]
-            for s in evalveSchedulesData:
-                s["controllerSetting"] = controllerSetting
-            eSer.create(evalveSchedulesData)
+            if evalveSchedulesData is not None:
+                eSer = self.fields["evalveSchedules"]
+                for s in evalveSchedulesData:
+                    s["controllerSetting"] = controllerSetting
+                eSer.create(evalveSchedulesData)
 
+        except Exception as e:
+            if controllerSetting:
+                controllerSetting.delete()
+            raise e
         return controllerSetting
 
     def to_representation(self, instance):
@@ -375,6 +406,7 @@ class ControllerSerializer(serializers.ModelSerializer):
     ```
     """
 
+    itemName = serializers.CharField(required=False, allow_null=True)
     setting = ControllerSettingSerializer()
     greenhouse = serializers.PrimaryKeyRelatedField(
         queryset=GreenhouseModel.objects.all(),
@@ -386,13 +418,16 @@ class ControllerSerializer(serializers.ModelSerializer):
         model = ControllerModel
         fields = '__all__'
 
+    def run_validation(self, data=...):
+        return super().run_validation(data)
+
     def validate(self, attrs):
         attrs = super().validate(attrs)
         return attrs
 
     def __validate(self, validated_data):
         keysMap = {
-            "evalve": ["evalveSchedules"],
+            "evalve": ["evalveSchedules", "cutHumidity"],
             "shade": ["openTemp", "closeTemp"],
             "fan": ["openTemp", "closeTemp"]
         }
@@ -401,15 +436,15 @@ class ControllerSerializer(serializers.ModelSerializer):
             greenhouse=validated_data["greenhouse"])))
         if validated_data["controllerID"] in containedID:
             raise serializers.ValidationError(
-                {"controllerID existed in the greenhouse"})
+                {f"controllerID {validated_data['controllerID']} existed in the greenhouse"})
 
         if validated_data["controllerKey"] not in keysMap.keys():
             raise serializers.ValidationError({"controllerKey is not defined"})
 
         for requiredKey in keysMap[validated_data["controllerKey"]]:
-            if validated_data["setting"][requiredKey] is None:
+            if validated_data["setting"].setdefault(requiredKey, None) is None:
                 raise serializers.ValidationError(
-                    {f"'{requiredKey}' should not be None when 'controllerKey' is '{validated_data['controllerKey']}"})
+                    f"'{requiredKey}' should not be None when 'controllerKey' is '{validated_data['controllerKey']}")
 
     def create(self, validated_data):
         """
@@ -417,17 +452,24 @@ class ControllerSerializer(serializers.ModelSerializer):
         would be labled "isCurrent" in controller setting history model. Only the latest
         setting would be labeled with "isCurrent == True" in ControllerSettingHistoryModel
         """
-        validated_data.setdefault(
-            "name", "default name")  # TODO: add defult naming function
-        self.__validate(validated_data)
-        settingData = validated_data.pop("setting")
+        controller = None
+        setting = None
+        try:
+            validated_data.setdefault(
+                "itemName", "default name")  # TODO: add defult naming function
+            self.__validate(validated_data)
+            settingData = validated_data.pop("setting")
 
-        controller = ControllerModel.objects.create(**validated_data)
+            controller = ControllerModel.objects.create(**validated_data)
 
-        # create new controller
-        settingData["controller"] = controller
-        controllerSettingSer = self.fields["setting"]
-        controllerSettingSer.create(settingData)
+            # create new controller
+            settingData["controller"] = controller
+            controllerSettingSer = self.fields["setting"]
+            controllerSettingSer.create(settingData)
+        except Exception as e:
+            if controller:
+                controller.delete()
+            raise e
 
         return controller
 
@@ -438,7 +480,7 @@ class ControllerSerializer(serializers.ModelSerializer):
         `["on", "manualControl", "openTemp", "closeTemp", "evalveSchedules]`
         """
         ret = {
-            "greenhouseUID": instance.greenhouse.uid,
+            "greenhouseUID": instance.greenhouse.greenhouseUID,
             "controllerID": instance.controllerID,
             "controllerKey": instance.controllerKey,
             "electricity": instance.electricity,
@@ -468,6 +510,69 @@ Greenhouse
 class GreenhouseSerializer(serializers.ModelSerializer):
     """
     Convert json data to greenhouse instance / Convert greenhouse instance into dictionary
+
+    ### Json input format for serializer
+    ```
+    {
+            "name": "test_greenhouse",
+            "address": "test_address",
+            "beginDate": "2011-03-21",
+            "realSensors": {
+                "AirSensor_1": {
+                    "electricity": 100,
+                    "lat": 24.112,
+                    "lng": 47.330,
+                    "sensors": {
+                        "airHumidity": {"value": 22, "timestamp": "2024-04-03 17:04:04"},
+                        "airTemp": {"value": 31, "timestamp": "2024-04-03 17:04:04"},
+                    }
+                },
+                "AirSensor_2": {
+                    "electricity": 100,
+                    "lat": 24.112,
+                    "lng": 47.330,
+                    "sensors": {
+                        "airHumidity": {"value": 22, "timestamp": "2024-04-03 17:04:04"},
+                        "airTemp": {"value": 31, "timestamp": "2024-04-03 17:04:04"},
+                    }
+                }
+            },
+            "controllers": {
+                "Watering_1": {
+                    "controllerKey": "evalve",
+                    "electricity": 100,
+                    "lat": 24.112,
+                    "lng": 47.330,
+                    "setting": {
+                        "on": True,
+                        "manualControl": False,
+                        "evalveSchedules": [
+                            {"cutHumidity": 30, "duration": 15,
+                                "startTime": "15:00"},
+                            {"cutHumidity": 30, "duration": 15,
+                                "startTime": "16:00"},
+                        ],
+                        "timestamp":  "2024-04-03 17:04:04",
+                    },
+
+                },
+                "Fan_1": {
+                    "controllerKey": "fan",
+                    "electricity": 100,
+                    "lat": 24.112,
+                    "lng": 47.330,
+                    "setting": {
+                        "on": True,
+                        "manualControl": False,
+                        "openTemp": 21,
+                        "closeTemp": 20,
+                        "timestamp": "2024-04-03 17:04:04",
+
+                    },
+                }
+            }
+        }
+    ```
     """
     """
     # NOTE:
@@ -483,7 +588,7 @@ class GreenhouseSerializer(serializers.ModelSerializer):
         many=True, allow_null=True, allow_empty=True, required=False)
     controllers = ControllerSerializer(
         many=True, allow_null=True, allow_empty=True, required=False)
-    uid = serializers.UUIDField(required=False)
+    greenhouseUID = serializers.UUIDField(required=False)
 
     class Meta:
         model = GreenhouseModel
@@ -492,58 +597,90 @@ class GreenhouseSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         return super().update(instance, validated_data)
 
+    def run_validation(self, data=...):
+        try:
+            data["realSensors"] = toList(
+                data.setdefault("realSensors", {}), "realSensor", "感測器")
+            data["controllers"] = toList(
+                data.setdefault("controllers", {}), "controller", "控制器")
+
+        except ValidationError as e:
+            raise ValidationError()
+
+        return super().run_validation(data=data)
+
     def validate(self, attrs):
         attrs = super().validate(attrs)
-
         return attrs
 
     def create(self, validated_data):
+        greenhouse = None
         try:
             # pop out real_sensors dictionary
-            realSensorDatas = validated_data.pop('realSensors')
+            realSensorList: list = validated_data.pop('realSensors')
             # pop out real_controller dictionary
-            controllerDatas = validated_data.pop('controllers')
+            controllerList: list = validated_data.pop('controllers')
 
             greenhouse = GreenhouseModel.objects.create(**validated_data)
 
             # create real sensors
             # TODO: wrap it as a function
             # TODO: use ser.save() method instead
-            realSensorSerializer = self.fields['realSensors']
-            realSensorList = []
-            for rSensorID, rSensorData in realSensorDatas.items():
-                rSensorData["greenhouse"] = greenhouse
-                rSensorData["realSensorID"] = rSensorID
-                rSensorData.setdefault(
-                    "realSensorKey", rSensorID.split("_")[0])
-                # TODO: add name mapper function later
-                rSensorData.setdefault("name", "Real Sensor")
-
-            realSensorInstances = realSensorSerializer.create(realSensorList)
+            realSensorsializer = self.fields['realSensors']
+            for rS in realSensorList:
+                rS.setdefault("greenhouse", greenhouse)
+            realSensorsializer.create(realSensorList)
 
             # create real controllers
-            controllerSerializer = self.fields['controllers']
-            controllerList = []
-            for controllerID, controllerData in controllerDatas.items():
-                controllerData["greenhouse"] = greenhouse
-                controllerData["controllerID"] = controllerID
-                controllerData.setdefault(
-                    "controllerKey", controllerID.split("_")[0])
-                # TODOL add name mapper function later
-                controllerData.setdefault("name", "Controller")
-                controllerList.append(controllerData)
-            controllerInstances = controllerSerializer.create(controllerList)
-
-            return greenhouse
+            controllersializer = self.fields['controllers']
+            for c in controllerList:
+                c.setdefault("greenhouse", greenhouse)
+            controllersializer.create(controllerList)
 
         except Exception as e:
-            print(e)
-
             if greenhouse is not None:
                 greenhouse.delete()  # the sub items would be deleted as well
-
             raise e
+
+        return greenhouse
 
     def to_representation(self, instance: GreenhouseModel):
         ret = super().to_representation(instance)
         return ret
+
+
+def toList(dataMap: dict, key: str, defaultItemName: str):
+    """
+    Turn data with following format to list
+    #### Map format
+    ```
+    {
+        "XXX_1": {},
+        "XXX_2": {},
+    }
+    ```
+    #### List format
+    ```
+    [
+        {
+            "xxxID": "XXX_1,
+            "itemName": "defaultName",
+        },
+        {
+            "xxxID": "XXX_2",
+            "itemName": "defaultName",
+        }
+    ]
+    ```
+    """
+    ret = []
+    ID_SUFFIX = "ID"
+    KEY_SUFFIX = "Key"
+    ITEM_NAME = "itemName"
+
+    for id, data in dataMap.items():
+        data[key+ID_SUFFIX] = id
+        data.setdefault(key+KEY_SUFFIX, id.split("_")[0])
+        data.setdefault(ITEM_NAME, defaultItemName)
+        ret.append(data)
+    return ret

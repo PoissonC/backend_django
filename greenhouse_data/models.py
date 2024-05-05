@@ -34,9 +34,9 @@ class RealSensorModel(models.Model):
     class Meta:
         db_table = "realSensorTable"
 
-    greenhouseUID = models.ForeignKey(
+    greenhouse = models.ForeignKey(
         GreenhouseModel, on_delete=models.CASCADE, related_name="realSensors")
-    name = models.CharField(max_length=64)  # The name of the model
+    itemName = models.CharField(max_length=64)  # The name of the model
     # The identifiction of the models
     realSensorID = models.CharField(max_length=32)
     realSensorKey = models.CharField(
@@ -54,7 +54,7 @@ class SensorModel(models.Model):
     class Meta:
         db_table = "sensorTable"
 
-    realSensorID = models.ForeignKey(
+    realSensor = models.ForeignKey(
         RealSensorModel, on_delete=models.CASCADE, related_name="sensors")
     itemName = models.CharField(max_length=64)
     # The sensor key would not duplicate in one real sensor
@@ -69,7 +69,7 @@ class ControllerModel(models.Model):
     class Meta:
         db_table = "controllerTable"
 
-    greenhouseUID = models.ForeignKey(
+    greenhouse = models.ForeignKey(
         GreenhouseModel, on_delete=models.CASCADE, related_name="controllers")
     itemName = models.CharField(max_length=64)
     controllerID = models.CharField(max_length=64)
@@ -111,6 +111,7 @@ class ControllerSettingHistoryModel(models.Model):
     manualControl = models.BooleanField(default=False)
     openTemp = models.FloatField(null=True)
     closeTemp = models.FloatField(null=True)
+    cutHumidity = models.FloatField(null=True)
 
 
 class EvalveScheduleModel(models.Model):
@@ -123,6 +124,5 @@ class EvalveScheduleModel(models.Model):
 
     controllerSetting = models.ForeignKey(
         ControllerSettingHistoryModel, on_delete=models.CASCADE, related_name="evalveSchedules")
-    cutHumidity = models.FloatField(default=35)
     duration = models.DurationField()
     startTime = models.TimeField(default=datetime.time(16, 0, 0))

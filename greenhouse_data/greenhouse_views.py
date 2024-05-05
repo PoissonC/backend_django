@@ -17,7 +17,119 @@ TODO:
 """
 
 
-class CreateRealSensorAPI(APIView):
+class RealSensorBaseAPI(APIView):
+    def parseSensorFormat(self, sensorData: dict, realSensor=None):
+        parsedSensor = {}
+
+        # extract timestamp
+        try:
+            assert isinstance(sensorData, dict)
+            timestamp = sensorData.pop("timestamp")
+        except AssertionError as e:
+            raise ValidationError(
+                detail={"sensorData is not a map"}
+            )
+        except:
+            raise ValidationError(
+                detail={"timestamp is not included in sensors field"})
+
+        # parse sensor map format
+        for sensorKey, value in sensorData.items():
+            try:
+
+                parsedSensor[sensorKey] = {
+                    "value": value,
+                    "timestamp": timestamp,
+                }
+
+                if realSensor:
+                    sensor = SensorModel.objects.get(
+                        realSensor=realSensor, sensorKey=sensorKey).id
+                    parsedSensor[sensorKey]['sensor'] = sensor
+
+            except SensorModel.DoesNotExist as e:
+                raise ValidationError(detail={
+                                      f"senosr with sensor key {sensorKey} not found in {realSensor.realSensorID}"})
+
+        return parsedSensor
+
+    def parseRealSensorFormat(self, data: dict):
+
+        try:
+            for rID, rData in data.items():
+                greenhouseUID = rData.setdefault("greenhouseUID", None)
+
+                if greenhouseUID is None:
+                    raise ValidationError(
+                        detail={"greenhouseUID not contained in realSensor map"})
+
+                # extract lat and lng
+                assert isinstance(rData.setdefault("address", None), dict)
+                address = rData.pop("address")
+
+                # get real sensor
+                try:
+                    realSensor = RealSensorModel.objects.get(
+                        greenhouse=greenhouseUID, realSensorID=rID)
+                except RealSensorModel.DoesNotExist:
+                    realSensor = None
+
+                rData["greenhouse"] = greenhouseUID
+                rData["realSensorID"] = rID
+                rData["realSensorKey"] = rID.split("_")[0]
+                rData["lat"] = address["lat"]
+                rData["lng"] = address["lng"]
+
+                rData["sensors"] = self.parseSensorFormat(
+                    rData["sensors"], realSensor)
+
+        except AssertionError as e:
+            print("address not provided")
+            raise ValidationError(
+                detail={"address is not included in request body"})
+
+        except ValidationError as e:
+            raise e
+
+        except Exception as e:
+            print(e)
+            raise ValidationError(detail={"error parsing request body"})
+
+        return data
+
+
+class ControllerBaseAPI(APIView):
+    def parseControllerFormat(self, data: dict):
+        greenhouseUID = None
+        try:
+            assert isinstance(data, dict)
+        except AssertionError as e:
+            raise ValidationError(detail={"request data is not a map"})
+
+        for controllerID, controllerData in data.items():
+            try:
+                assert isinstance(controllerData, dict)
+
+                greenhouseUID = controllerData.setdefault(
+                    "greenhouseUID", None)
+
+                if greenhouseUID is None:
+                    raise ValidationError(
+                        detail={f"greenhouseUID not contained in realSensor map for {controllerID}"})
+
+                controllerData["controllerID"] = controllerID
+                controllerData["greenhouse"] = greenhouseUID
+
+            except AssertionError as e:
+                raise ValidationError(detail={"controller data is not a map"})
+
+            except Exception as e:
+                raise ValidationError(detail={e})
+
+        return data
+
+
+class CreateRealSensorAPI(RealSensorBaseAPI):
     """
     Create real sensor item when the creattion request is sent from the sensor. The current value would start to be recoreded at the moment
 
@@ -31,25 +143,20 @@ class CreateRealSensorAPI(APIView):
 
     #### Post format example
     {
-        "greenhouseUID": "0a94ejoidjrsdvj",
-        "realSensors": {
-            "AIR_SENSOR_1": {
-                "electricity": 100,
+        "AirSensor_1": {
+            "greenhouseUID": "1234",
+            "realSensorID": "AirSensor",
+            "electricity": 4.12,
+            "address":
+            {
                 "lat": 24.112,
-                "lng": 47.330,
-                "sensors": {
-                    "airHumidity": {"value": 22, "timestamp": "2024-04-03 17:04:04"},
-                    "airTemp": {"value": 31, "timestamp": "2024-04-03 17:04:04"},
-                }
+                "lng": 47.330
             },
-            "AIR_SENSOR_2": {
-                "electricity": 100,
-                "lat": 24.112,
-                "lng": 47.330,
-                "sensors": {
-                    "airHumidity": {"value": 22, "timestamp": "2024-04-03 17:04:04"},
-                    "airTemp": {"value": 31, "timestamp": "2024-04-03 17:04:04"},
-                }
+            "sensors":
+            {
+                "airTemp": 33,
+                "airHumidity": 68,
+                "timeStamp": "2024-04-18 17:04:04"
             }
         },
     }
@@ -57,35 +164,30 @@ class CreateRealSensorAPI(APIView):
     """
 
     def post(self, request):
-        # NOTE: we can try using PrimaryKeyField for greenhouse in serializer, so we only has to input greenhouseUID instead of an instance
-        # validate
-        if request.data["greenhouseUID"] is None:
-            return Response({"greenhouseUID field not included in request data"}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
-            greenhouse = GreenhouseModel.objects.get(
-                uid=request.data.pop("greenhouseUID"))
+            data = self.parseRealSensorFormat(request.data)
+            for realSensorID, rSensorData in data.items():
+                rSensorSer = RealSensorSerializer(data=rSensorData)
 
-            rSensors: dict = request.data["realSensors"]
-            for realSensorID, rSensorData in rSensors.items():
-                rSensorData["greenhouse"] = greenhouse
-                rSensorData["realSensorID"] = realSensorID
-                rSensorData.setdefault(
-                    "realSensorKey", realSensorID.split("_")[0])
-                rSensorSer = RealSensorSerializer()
-                rSensorSer.create(rSensorData)
+                if not rSensorSer.is_valid():
+                    raise ValidationError(rSensorSer.errors)
 
-            result = {
-                "message": "item created",
-            }
-            return Response(result, status=status.HTTP_200_OK)
+                rSensorSer.save()
+
+            return Response({"message": "item created"}, status=status.HTTP_200_OK)
+
+        except RealSensorModel.DoesNotExist as e:
+            print("")
 
         except GreenhouseModel.DoesNotExist as e:
             print(f"Greenhouse does not exist")
             return Response({"message": "Parent greenhouse not found"}, status=status.HTTP_400_BAD_REQUEST)
+        except ValidationError as e:
+            print(e)
+            return Response({"message": e.detail}, status=status.HTTP_400_BAD_REQUEST)
 
 
-class CreateControllerAPI(APIView):
+class CreateControllerAPI(ControllerBaseAPI):
     """
     Create controller when the creation request is sent from the controller
 
@@ -98,63 +200,64 @@ class CreateControllerAPI(APIView):
     }
 
     #### Post format example
+    ```
     {
-        "greenhouseUID": "1221adfadslj",
-        "controllers": {
-            "Watering_1": {
-                "controllerKey": "evalve",
-                "electricity": 100,
-                "lat": 24.112,
-                "lng": 47.330,
-                "setting": {
-                    "on": False,
-                    "manualControl": False,
-                    "timestamp": "2024-04-03 17:04:04",
-                    "evalveSchedules": [
-                        {"cutHumidity": 30, "duration": 15, "startTime": "15:00"},
-                        {"cutHumidity": 30, "duration": 15, "startTime": "16:00"},
-                    ],
-                }
-            },
-            "Fan_1": {
-                "controllerKey": "evalve",
-                "electricity": 100,
-                "lat": 24.112,
-                "lng": 47.330,
-                "setting": {
-                    "on": False,
-                    "manualControl": False,
-                    "timestamp": "2024-04-03 17:04:04",
-                    "openTemp": 21,
-                    "closeTemp": 20,
-                }
-
+        "Watering_1": {
+            "greenhouseUID": "aeprjsdlknafln",
+            "controllerKey": "evalve",
+            "electricity": 100,
+            "lat": 24.112,
+            "lng": 47.330,
+            "setting": {
+                "on": False,
+                "manualControl": False,
+                "timestamp": "2024-04-03 17:04:04",
+                "evalveSchedules": [
+                    {"cutHumidity": 30, "duration": 15, "startTime": "15:00"},
+                    {"cutHumidity": 30, "duration": 15, "startTime": "16:00"},
+                ],
             }
+        },
+        "Fan_1": {
+            "greenhouseUID": "oerahjdfjnjn;dbfa",
+            "controllerKey": "evalve",
+            "electricity": 100,
+            "lat": 24.112,
+            "lng": 47.330,
+            "setting": {
+                "on": False,
+                "manualControl": False,
+                "timestamp": "2024-04-03 17:04:04",
+                "openTemp": 21,
+                "closeTemp": 20,
+            }
+
         }
     }
+    ```
     """
 
     def post(self, request):
         # NOTE: we can try using PrimaryKeyField for greenhouse in serializer, so we only has to input greenhouseUID instead of an instance
         try:
-            greenhouse = GreenhouseModel.objects.get(
-                uid=request.data.pop("greenhouseUID"))
+            data = self.parseControllerFormat(request.data)
+            for controllerData in data.values():
+                controllerSer = ControllerSerializer(data=controllerData)
 
-            contrllersDatas: dict = request.data["controllers"]
-            for controllerID, controllerData in contrllersDatas.items():
-                controllerData["greenhouse"] = greenhouse
-                controllerData["controllerID"] = controllerID
-                controllerSer = ControllerSerializer()
-                controllerSer.create(controllerData)
+                if not controllerSer.is_valid():
+                    raise ValidationError(detail=controllerSer.errors)
 
-            result = {
-                "message": "item created",
-            }
-            return Response(result, status=status.HTTP_200_OK)
+                controllerSer.save()
+
+            return Response({"message": "item created"}, status=status.HTTP_200_OK)
 
         except GreenhouseModel.DoesNotExist as e:
             print(f"Greenhouse does not exist")
             return Response({"message": "Parent greenhouse not found"}, status=status.HTTP_400_BAD_REQUEST)
+
+        except ValidationError as e:
+            print(e)
+            return Response({"message": e.detail}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class GetControllerSetting(APIView):
@@ -207,7 +310,7 @@ class GetControllerSetting(APIView):
 
         try:
             greenhouse = GreenhouseModel.objects.get(
-                uid=request.data["greenhouseUID"])
+                greenhouseUID=request.data["greenhouseUID"])
             ret = {}
 
             for controllerID in request.data["controllerID"]:
@@ -280,7 +383,7 @@ class GetAllControllerSetting(APIView):
                 return Response({"please include greenhouseUID in request data"}, status=status.HTTP_400_BAD_REQUEST)
 
             greenhouse = GreenhouseModel.objects.get(
-                uid=request.data.pop("greenhouseUID"))
+                greenhouseUID=request.data.pop("greenhouseUID"))
 
             ret = {}
 
@@ -298,7 +401,7 @@ class GetAllControllerSetting(APIView):
             return Response({"message": "Parent greenhouse not found"}, status=status.HTTP_400_BAD_REQUEST)
 
 
-class UpdateRealSensorDataAPI(APIView):
+class UpdateRealSensorDataAPI(RealSensorBaseAPI):
     """
     Update the corresponding sensor data from the request object
 
@@ -308,15 +411,20 @@ class UpdateRealSensorDataAPI(APIView):
     #### Request format
     ```
     {
-        "greenhouseUID": "a9jwjenfaksj",
-        "realSensors": {
-            "AIR_SENSOR_1": {
-                "airHumidity": {"value": 22, "timestamp": "2024-04-03 17:04:04"},
-                "airTemp": {"value": 31, "timestamp": "2024-04-03 17:04:04"},
+        "AirSensor_1": {
+            "greenhouseUID": "1234",
+            "realSensorID": "AirSensor",
+            "electricity": 4.12,
+            "address":
+            {
+                "lat": 24.112,
+                "lng": 47.330
             },
-            "AIR_SENSOR_2": {
-                "airHumidity": {"value": 22, "timestamp": "2024-04-03 17:04:04"},
-                "airTemp": {"value": 31, "timestamp": "2024-04-03 17:04:04"},
+            "sensors":
+            {
+                "airTemp": 33,
+                "airHumidity": 68,
+                "timeStamp": "2024-04-18 17:04:04"
             }
         },
     }
@@ -325,34 +433,32 @@ class UpdateRealSensorDataAPI(APIView):
 
     def post(self, request):
         try:
-            if request.data["greenhouseUID"] is None:
-                print("greenhouseUID is not included in request data")
-                return Response({"please include greenhouseUID in request data"}, status=status.HTTP_400_BAD_REQUEST)
-
-            greenhouse = GreenhouseModel.objects.get(
-                uid=request.data.pop("greenhouseUID"))
+            data = self.parseRealSensorFormat(request.data)
 
             notFound = []
-            for realSensorID, realSensorData in request.data["realSensors"].items():
-                realSensor = list(RealSensorModel.objects.filter(
-                    greenhouse=greenhouse, realSensorID=realSensorID))
+            for realSensorID, realSensorData in data.items():
+                print(realSensorData)
+                for sensorKey, sensorValueData in realSensorData["sensors"].items():
+                    print(sensorValueData)
+                    sensorValueSer = SensorValueHistorySerializer(
+                        data=sensorValueData)
 
-                if len(realSensor) == 0:
-                    print("real sensor not found")
-                    notFound.append(realSensorID)
-                    continue
+                    # validate
+                    if not sensorValueSer.is_valid():
+                        raise ValidationError(sensorValueSer.errors)
 
-                for sensorKey, sensorValueData in realSensorData.items():
-
-                    sensor = SensorModel.objects.get(
-                        realSensorID=realSensor[0], sensorKey=sensorKey)
-
-                    sensorValueData["sensor"] = sensor
-                    sensorValueSer = SensorValueHistorySerializer()
-                    sensorValueSer.create(sensorValueData)
+                    sensorValueSer.save()
 
             return Response({"message": "sensor history updated", "notFound": notFound}, status=status.HTTP_200_OK)
+
+        except RealSensorModel.DoesNotExist as e:
+            print(f"real sensor not found", e)
+            return Response({"message": "real sensor not found"}, status=status.HTTP_400_BAD_REQUEST)
 
         except GreenhouseModel.DoesNotExist as e:
             print(f"Greenhouse does not exist")
             return Response({"message": "Parent greenhouse not found"}, status=status.HTTP_400_BAD_REQUEST)
+
+        except ValidationError as e:
+            print(e)
+            return Response({"message": e.detail}, status=status.HTTP_400_BAD_REQUEST)

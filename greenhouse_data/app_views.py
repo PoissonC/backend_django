@@ -30,50 +30,64 @@ class CreatGreenhouseAPI(APIView):
     #### Post format example
     ```
     {
-        "name": "test_greenhouse",
-        "address": "test_address",
-        "beginDate": "2011-03-21",
-        "realSensors": {
-            "AirSensor_1": {
-                "electricity": 100,
-                "lat": 24.112,
-                "lng": 47.330,
-                "sensors": {
-                    "airHumidity": {"value": 22, "timestamp": "2024-04-03 17:04:04"},
-                    "airTemp": {"value": 31, "timestamp": "2024-04-03 17:04:04"},
+            "name": "test_greenhouse",
+            "address": "test_address",
+            "beginDate": "2011-03-21",
+            "realSensors": {
+                "AirSensor_1": {
+                    "electricity": 100,
+                    "lat": 24.112,
+                    "lng": 47.330,
+                    "sensors": {
+                        "airHumidity": {"value": 22, "timestamp": "2024-04-03 17:04:04"},
+                        "airTemp": {"value": 31, "timestamp": "2024-04-03 17:04:04"},
+                    }
+                },
+                "AirSensor_2": {
+                    "electricity": 100,
+                    "lat": 24.112,
+                    "lng": 47.330,
+                    "sensors": {
+                        "airHumidity": {"value": 22, "timestamp": "2024-04-03 17:04:04"},
+                        "airTemp": {"value": 31, "timestamp": "2024-04-03 17:04:04"},
+                    }
                 }
-            }
-            "AirSensor_2": {
-                "electricity": 100,
-                "lat": 24.112,
-                "lng": 47.330,
-                "sensors": {
-                    "airHumidity": {"value": 22, "timestamp": "2024-04-03 17:04:04"},
-                    "airTemp": {"value": 31, "timestamp": "2024-04-03 17:04:04"},
+            },
+            "controllers": {
+                "Watering_1": {
+                    "controllerKey": "evalve",
+                    "electricity": 100,
+                    "lat": 24.112,
+                    "lng": 47.330,
+                    "setting": {
+                        "on": True,
+                        "manualControl": False,
+                        "evalveSchedules": [
+                            {"cutHumidity": 30, "duration": 15,
+                                "startTime": "15:00"},
+                            {"cutHumidity": 30, "duration": 15,
+                                "startTime": "16:00"},
+                        ],
+                        "timestamp":  "2024-04-03 17:04:04",
+                    },
+
+                },
+                "Fan_1": {
+                    "controllerKey": "fan",
+                    "electricity": 100,
+                    "lat": 24.112,
+                    "lng": 47.330,
+                    "setting": {
+                        "on": True,
+                        "manualControl": False,
+                        "openTemp": 21,
+                        "closeTemp": 20,
+                        "timestamp": "2024-04-03 17:04:04",
+
+                    },
                 }
-            }
-        },
-        "controllers": {
-            "Watering_1": {
-                "controllerKey": "evalve",
-                "electricity": 100,
-                "lat": 24.112,
-                "lng": 47.330,
-                "evalveSchedules": [
-                    {"cutHumidity": 30, "duration": 15, "startTime": "15:00"},
-                    {"cutHumidity": 30, "duration": 15, "startTime": "16:00"},
-                ],
-            }
-            "Fan_1": {
-                "controllerKey": "evalve",
-                "electricity": 100,
-                "lat": 24.112,
-                "lng": 47.330,
-                "openTemp": 21,
-                "closeTemp": 20,
             }
         }
-    }
     ```
 
     #### Return format
@@ -91,15 +105,19 @@ class CreatGreenhouseAPI(APIView):
             user_id = request.user.id
 
             payload = request.data
-            payload["owner"] = request.user
+            payload["owner"] = user_id
 
-            ser = GreenhouseSerializer()
-            greenhouse_instance = ser.create(payload)
-            result = {
-                "message": "greenhouse created",
-                "greenhouseUID": greenhouse_instance.uid,
-            }
-            return Response(result, status=status.HTTP_201_CREATED)
+            ser = GreenhouseSerializer(data=payload)
+            if ser.is_valid():
+                greenhouse_instance = ser.save()
+                result = {
+                    "message": "greenhouse created",
+                    "greenhouseUID": greenhouse_instance.greenhouseUID,
+                }
+                return Response(result, status=status.HTTP_201_CREATED)
+
+            print("validation error:", ser.errors)
+            return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
 
             # TODO: use the code below for safer creation after overwriting the is_valid() method
             # ser = GreenhouseSerializer(data=payload)
@@ -283,98 +301,232 @@ class GetGreenhouseDataAPI(APIView):  # TODO: check
 
     ```
     [
+    {
+        "greenhouseUID": "6db7e7ec-e841-400e-81ec-bbca7901705b",
+        "owner": 1,
+        "realSensors": [
         {
-        "greenhouseUID": "0argibdfhe",
-        "name": "Greenhouse",
-        "address": "Taipei, Taiwan",
-        "beginTime": "2001-03-21",
+            "id": 10,
+            "greenhouse": "6db7e7ec-e841-400e-81ec-bbca7901705b",
+            "itemName": "感測器",
+            "realSensorID": "AirSensor_1",
+            "realSensorKey": "AirSensor",
+            "electricity": 100.0,
+            "lat": 24.112,
+            "lng": 47.33
+        },
+        {
+            "id": 11,
+            "greenhouse": "6db7e7ec-e841-400e-81ec-bbca7901705b",
+            "itemName": "感測器",
+            "realSensorID": "AirSensor_2",
+            "realSensorKey": "AirSensor",
+            "electricity": 100.0,
+            "lat": 24.112,
+            "lng": 47.33
+        }
+        ],
+        "name": "test_greenhouse",
+        "address": "test_address",
+        "beginDate": "2011-03-21",
+        "photo": null,
         "sensors": {
-          "airHumidity": [
+        "airHumidity": [
             {
-              "currentValue": 32.0,
-              "itemName": "North AirSensor",
-              "realSensorID": "AirSensor_1",
+            "itemName": "感測項目",
+            "realSensorID": 10,
+            "value": 22.0
             },
             {
-              "currentValue": 32.0,
-              "itemName": "North AirSensor",
-              "realSensorID": "AirSensor_2",
-            },
-          ],
-          "soidHumidity": [
+            "itemName": "感測項目",
+            "realSensorID": 11,
+            "value": 22.0
+            }
+        ],
+        "airTemp": [
             {
-              "currentValue": 32.0,
-              "itemName": "North AirSensor",
-              "realSensorID": "AirSensor_1",
+            "itemName": "感測項目",
+            "realSensorID": 10,
+            "value": 31.0
             },
             {
-              "currentValue": 32.0,
-              "itemName": "North AirSensor",
-              "realSensorID": "AirSensor_2",
-            },
-          ],
+            "itemName": "感測項目",
+            "realSensorID": 11,
+            "value": 31.0
+            }
+        ]
         },
         "controllers": {
-          "evalve": [
+        "fan": [
             {
-              "on": true,
-              "manualControl": false,
-              "itemName": "電磁罰1",
-              "lat": 24.666,
-              "lng": 25.77,
-              "electricity": 0.9,
-              "setting": {
-                "cutHumidiy": [20.0, 30.0],
-                "duration": [2.0, 3.0],
-                "startTime": ["12:00:00", "14:00:00"]
-              },
+            "greenhouseUID": "6db7e7ec-e841-400e-81ec-bbca7901705b",
+            "controllerID": "Fan_1",
+            "controllerKey": "fan",
+            "electricity": 100.0,
+            "itemName": "控制器",
+            "lat": 24.112,
+            "lng": 47.33,
+            "setting": {
+                "id": 13,
+                "controller": 14,
+                "openTemp": 21.0,
+                "closeTemp": 20.0,
+                "evalveSchedules": [],
+                "timestamp": "2024-04-03T17:04:04Z",
+                "isCurrent": true
             },
-            {
-              "on": true,
-              "manualControl": false,
-              "itemName": "電磁罰2",
-              "lat": 24.666,
-              "lng": 25.77,
-              "electricity": 0.9,
-              "setting": {
-                "cutHumidiy": [20.0, 30.0],
-                "duration": [2.0, 3.0],
-                "startTime": ["12:00:00", "14:00:00"]
-              },
-            },
-          ],
-          "fan": [
-            {
-              "on": true,
-              "manualControl": false,
-              "itemName": "fan",
-              "lat": 24.666,
-              "lng": 25.77,
-              "electricity": 0.9,
-              "setting": {
-                "closeTemp": 32,
-                "openTemp": 34,
-              }
-            },
-            {
-              "on": true,
-              "manualControl": false,
-              "itemName": "fan",
-              "lat": 24.666,
-              "lng": 25.77,
-              "electricity": 0.9,
-              "setting": {
-                "closeTemp": 32,
-                "openTemp": 34,
-              }
+            "on": true,
+            "manualControl": false
             }
-          ]
-        },
-        "realSensors": {
-          "AirSensor_1": {"name": "My cool air sensor 1", "electricity": 0.8, "lat": 32.1, "lng": 32.1},
-          "AirSensor_2": {"name": "My cool air sensor 2", "electricity": 0.8, "lat": 32.1, "lng": 32.3},
+        ],
+        "evalve": [
+            {
+            "greenhouseUID": "6db7e7ec-e841-400e-81ec-bbca7901705b",
+            "controllerID": "Watering_1",
+            "controllerKey": "evalve",
+            "electricity": 100.0,
+            "itemName": "控制器",
+            "lat": 24.112,
+            "lng": 47.33,
+            "setting": {
+                "id": 12,
+                "controller": 13,
+                "openTemp": null,
+                "closeTemp": null,
+                "timestamp": "2024-04-03T17:04:04Z",
+                "isCurrent": true,
+                "cutHumidity": [
+                30.0,
+                30.0
+                ],
+                "duration": [
+                "00:00:15",
+                "00:00:15"
+                ],
+                "startTime": [
+                "15:00:00",
+                "16:00:00"
+                ]
+            },
+            "on": true,
+            "manualControl": false
+            }
+        ]
         }
-      }
+    },
+    {
+        "greenhouseUID": "cf7cf83d-2983-4c49-b22c-5ff98cd99d88",
+        "owner": 1,
+        "realSensors": [
+        {
+            "id": 12,
+            "greenhouse": "cf7cf83d-2983-4c49-b22c-5ff98cd99d88",
+            "itemName": "感測器",
+            "realSensorID": "AirSensor_1",
+            "realSensorKey": "AirSensor",
+            "electricity": 100.0,
+            "lat": 24.112,
+            "lng": 47.33
+        },
+        {
+            "id": 13,
+            "greenhouse": "cf7cf83d-2983-4c49-b22c-5ff98cd99d88",
+            "itemName": "感測器",
+            "realSensorID": "AirSensor_2",
+            "realSensorKey": "AirSensor",
+            "electricity": 100.0,
+            "lat": 24.112,
+            "lng": 47.33
+        }
+        ],
+        "name": "test_greenhouse",
+        "address": "test_address",
+        "beginDate": "2011-03-21",
+        "photo": null,
+        "sensors": {
+        "airHumidity": [
+            {
+            "itemName": "感測項目",
+            "realSensorID": 12,
+            "value": 22.0
+            },
+            {
+            "itemName": "感測項目",
+            "realSensorID": 13,
+            "value": 22.0
+            }
+        ],
+        "airTemp": [
+            {
+            "itemName": "感測項目",
+            "realSensorID": 12,
+            "value": 31.0
+            },
+            {
+            "itemName": "感測項目",
+            "realSensorID": 13,
+            "value": 31.0
+            }
+        ]
+        },
+        "controllers": {
+        "fan": [
+            {
+            "greenhouseUID": "cf7cf83d-2983-4c49-b22c-5ff98cd99d88",
+            "controllerID": "Fan_1",
+            "controllerKey": "fan",
+            "electricity": 100.0,
+            "itemName": "控制器",
+            "lat": 24.112,
+            "lng": 47.33,
+            "setting": {
+                "id": 15,
+                "controller": 16,
+                "openTemp": 21.0,
+                "closeTemp": 20.0,
+                "evalveSchedules": [],
+                "timestamp": "2024-04-03T17:04:04Z",
+                "isCurrent": true
+            },
+            "on": true,
+            "manualControl": false
+            }
+        ],
+        "evalve": [
+            {
+            "greenhouseUID": "cf7cf83d-2983-4c49-b22c-5ff98cd99d88",
+            "controllerID": "Watering_1",
+            "controllerKey": "evalve",
+            "electricity": 100.0,
+            "itemName": "控制器",
+            "lat": 24.112,
+            "lng": 47.33,
+            "setting": {
+                "id": 14,
+                "controller": 15,
+                "openTemp": null,
+                "closeTemp": null,
+                "timestamp": "2024-04-03T17:04:04Z",
+                "isCurrent": true,
+                "cutHumidity": [
+                30.0,
+                30.0
+                ],
+                "duration": [
+                "00:00:15",
+                "00:00:15"
+                ],
+                "startTime": [
+                "15:00:00",
+                "16:00:00"
+                ]
+            },
+            "on": true,
+            "manualControl": false
+            }
+        ]
+        }
+    }
     ]
     ```
 
@@ -384,18 +536,15 @@ class GetGreenhouseDataAPI(APIView):  # TODO: check
     """
     permission_classes = [IsAuthenticated]
 
-    @staticmethod
     def parseEvalvSchedules(self, controller):
 
         if controller["setting"].setdefault("evalveSchedules", None):
             scheds = controller["setting"].pop("evalveSchedules")
             for sched in scheds:
                 controller["setting"].setdefault(
-                    "cutHumidity").append(sched["cutHumidity"])
+                    "duration", []).append(sched["duration"])
                 controller["setting"].setdefault(
-                    "duration").append(sched["duration"])
-                controller["setting"].setdefault(
-                    "startTime").append(sched["startTime"])
+                    "startTime", []).append(sched["startTime"])
 
         return controller
 
@@ -521,12 +670,12 @@ class GetSensorCurrentDataToApp(APIView):
     ```
     [
         {
-            "currentValue: 23.1,
+            "value: 23.1,
             "itemName": "air humidity sensor",
             "realSensorName: "AirSensor,
         },
         {
-            "currentValue: 23.1,
+            "value: 23.1,
             "itemName": "air humidity sensor",
             "realSensorName: "AirSensor,
         },
