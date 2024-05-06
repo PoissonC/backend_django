@@ -2,7 +2,9 @@ from datetime import datetime, timedelta
 
 from django.contrib.auth.models import User
 from rest_framework import serializers
-from rest_framework.exceptions import ErrorDetail, ValidationError
+from rest_framework.exceptions import ValidationError
+from rest_framework.utils import html, model_meta, representation
+
 from django.core.exceptions import ValidationError as DjangoValidationError
 from greenhouse_data.models import *
 
@@ -131,7 +133,7 @@ class SensorSerializer(serializers.ModelSerializer):
         ret = {
             "sensorKey": instance.sensorKey,
             "itemName": instance.itemName,
-            "realSensorID": instance.realSensor.id,
+            "realSensorID": instance.realSensor.realSensorID,
         }
         currentSensorData = list(SensorValueHistoryModel.objects.filter(
             sensor=instance).filter(isCurrent=True))
@@ -211,6 +213,34 @@ class RealSensorSerializer(serializers.ModelSerializer):
         if validated_data["realSensorID"] in containedID:
             raise serializers.ValidationError(
                 {"realSensorID existed in the greenhouse"})
+
+    def update(self, instance, validated_data):
+        if validated_data.setdefault("sensors", None):
+            raise ValidationError({"can not update sensors data in the API"})
+
+        info = model_meta.get_field_info(instance)
+
+        # Simply set each attribute on the instance, and then save it.
+        # Note that unlike `.create()` we don't need to treat many-to-many
+        # relationships as being a special case. During updates we already
+        # have an instance pk for the relationships to be associated with.
+        m2m_fields = []
+        for attr, value in validated_data.items():
+            if attr in info.relations and info.relations[attr].to_many:
+                m2m_fields.append((attr, value))
+            else:
+                setattr(instance, attr, value)
+
+        instance.save()
+
+        # Note that many-to-many fields are set after updating instance.
+        # Setting m2m fields triggers signals which could potentially change
+        # updated instance and we do not want it to collide with .update()
+        for attr, value in m2m_fields:
+            field = getattr(instance, attr)
+            field.set(value)
+
+        return instance
 
     def create(self, validated_data):
         realSensor = None
@@ -366,7 +396,7 @@ class ControllerSerializer(serializers.ModelSerializer):
     ```
     {
         "greenhouse": greenhouseInstance,
-        "controllerID": "Watering_1", # received from the key of request data
+        "controllerID": "evalve_1", # received from the key of request data
         "electricity": 100,
         "lat": 24.112,
         "lng": 47.330,
@@ -389,7 +419,7 @@ class ControllerSerializer(serializers.ModelSerializer):
     ```
     {
         "greenhouse": greenhouseInstance,
-        "controllerID": "watering_1", # originally the key of request data
+        "controllerID": "evalve_1", # originally the key of request data
         "controllerKey": "evalve",
         "electricity": 100,
         "lat": 24.112,
@@ -538,7 +568,7 @@ class GreenhouseSerializer(serializers.ModelSerializer):
                 }
             },
             "controllers": {
-                "Watering_1": {
+                "evalve_1": {
                     "controllerKey": "evalve",
                     "electricity": 100,
                     "lat": 24.112,

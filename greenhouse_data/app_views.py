@@ -9,98 +9,96 @@ from datetime import datetime
 
 from .models import *
 from .serializer import *
+from .api_base import *
 
 # TODO: implement all apis
 
 
-"""
-Creation API
-"""
-
-
-class CreatGreenhouseAPI(APIView):
+class Greenhouse(GetGreenhouseBase):
     """
-    Enable administrators to easily create a new greenhouse. No sensors and controller data are sent when greenhosue is created by admin user.
+    API to create greenhouse or get all greenhouses for the user
+    """
 
-    - method: POST
-    - paramters: greenhouse data map
-    - server: update greenhouse dataset for the user
-    - return: greenhouse uid (in the same order)
+    # create
+    def post(self, request):
+        """
+        Enable administrators to easily create a new greenhouse. No sensors and controller data are sent when greenhosue is created by admin user.
 
-    #### Post format example
-    ```
-    {
-            "name": "test_greenhouse",
-            "address": "test_address",
-            "beginDate": "2011-03-21",
-            "realSensors": {
-                "AirSensor_1": {
-                    "electricity": 100,
-                    "lat": 24.112,
-                    "lng": 47.330,
-                    "sensors": {
-                        "airHumidity": {"value": 22, "timestamp": "2024-04-03 17:04:04"},
-                        "airTemp": {"value": 31, "timestamp": "2024-04-03 17:04:04"},
+        - method: POST
+        - paramters: greenhouse data map
+        - server: update greenhouse dataset for the user
+        - return: greenhouse uid (in the same order)
+
+        #### Post format example
+        ```
+        {
+                "name": "test_greenhouse",
+                "address": "test_address",
+                "beginDate": "2011-03-21",
+                "realSensors": {
+                    "AirSensor_1": {
+                        "electricity": 100,
+                        "lat": 24.112,
+                        "lng": 47.330,
+                        "sensors": {
+                            "airHumidity": {"value": 22, "timestamp": "2024-04-03 17:04:04"},
+                            "airTemp": {"value": 31, "timestamp": "2024-04-03 17:04:04"},
+                        }
+                    },
+                    "AirSensor_2": {
+                        "electricity": 100,
+                        "lat": 24.112,
+                        "lng": 47.330,
+                        "sensors": {
+                            "airHumidity": {"value": 22, "timestamp": "2024-04-03 17:04:04"},
+                            "airTemp": {"value": 31, "timestamp": "2024-04-03 17:04:04"},
+                        }
                     }
                 },
-                "AirSensor_2": {
-                    "electricity": 100,
-                    "lat": 24.112,
-                    "lng": 47.330,
-                    "sensors": {
-                        "airHumidity": {"value": 22, "timestamp": "2024-04-03 17:04:04"},
-                        "airTemp": {"value": 31, "timestamp": "2024-04-03 17:04:04"},
+                "controllers": {
+                    "evalve_1": {
+                        "controllerKey": "evalve",
+                        "electricity": 100,
+                        "lat": 24.112,
+                        "lng": 47.330,
+                        "setting": {
+                            "on": True,
+                            "manualControl": False,
+                            "evalveSchedules": [
+                                {"cutHumidity": 30, "duration": 15,
+                                    "startTime": "15:00"},
+                                {"cutHumidity": 30, "duration": 15,
+                                    "startTime": "16:00"},
+                            ],
+                            "timestamp":  "2024-04-03 17:04:04",
+                        },
+
+                    },
+                    "Fan_1": {
+                        "controllerKey": "fan",
+                        "electricity": 100,
+                        "lat": 24.112,
+                        "lng": 47.330,
+                        "setting": {
+                            "on": True,
+                            "manualControl": False,
+                            "openTemp": 21,
+                            "closeTemp": 20,
+                            "timestamp": "2024-04-03 17:04:04",
+
+                        },
                     }
-                }
-            },
-            "controllers": {
-                "Watering_1": {
-                    "controllerKey": "evalve",
-                    "electricity": 100,
-                    "lat": 24.112,
-                    "lng": 47.330,
-                    "setting": {
-                        "on": True,
-                        "manualControl": False,
-                        "evalveSchedules": [
-                            {"cutHumidity": 30, "duration": 15,
-                                "startTime": "15:00"},
-                            {"cutHumidity": 30, "duration": 15,
-                                "startTime": "16:00"},
-                        ],
-                        "timestamp":  "2024-04-03 17:04:04",
-                    },
-
-                },
-                "Fan_1": {
-                    "controllerKey": "fan",
-                    "electricity": 100,
-                    "lat": 24.112,
-                    "lng": 47.330,
-                    "setting": {
-                        "on": True,
-                        "manualControl": False,
-                        "openTemp": 21,
-                        "closeTemp": 20,
-                        "timestamp": "2024-04-03 17:04:04",
-
-                    },
                 }
             }
+        ```
+
+        #### Return format
+        ```
+        {
+            "message": "greenhouse created,
+            "greenhouseUID": "sdoi3u4eoijsdx;fae",
         }
-    ```
-
-    #### Return format
-    ```
-    {
-        "message": "greenhouse created,
-        "greenhouseUID": "sdoi3u4eoijsdx;fae",
-    }
-    ```
-    """
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
+        """
         try:
             user_id = request.user.id
 
@@ -119,461 +117,127 @@ class CreatGreenhouseAPI(APIView):
             print("validation error:", ser.errors)
             return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            # TODO: use the code below for safer creation after overwriting the is_valid() method
-            # ser = GreenhouseSerializer(data=payload)
-
-            # if ser.is_valid():
-            #     ser.save()
-            #     result = {
-            #         "message": "greenhouse created",
-            #         "greenhouseUID": ser.instance.uid,
-            #     }
-            #     return Response(result, status=status.HTTP_201_CREATED)
-
-            # return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             raise e
 
-
-"""
-Delete API
-"""
-
-
-class DeleteGreenhouseAPI(APIView):
-    """
-    Delete the greenhouse with uid == greenhouseUID
-
-    - method: DELETE
-    - authentication: "Authorization"" "Token <token>"
-
-    #### Request data format
-    ```
-    {
-        "greenhouseUID": "1dasdfhjsdf832"
-    }
-    ```
-    """
-    permission_classes = [IsAuthenticated]
-
-    def delete(self, request):
-        payload = request.data
-        payload.setdefault("greenhouseUID", None)
-
-        # validate
-        if payload["greenhouseUID"] is None:
-            print("greenhouseUID is not included in request data")
-            return Response({"message": "please include greenhouseUID in request data"}, status=status.HTTP_400_BAD_REQUEST)
-
-        GreenhouseModel.objects.get(uid=payload["greenhouseUID"]).delete()
-        return Response({"message": "greenhouse is deleted"}, status=status.HTTP_200_OK)
-
-
-class DeleteRealSensorAPI(APIView):
-    """
-    Delete the real sensor data
-
-    - method: DELETE
-    - authentication: "Authorization"" "Token <token>"
-
-    #### Request data format
-    ```
-    {
-        "greenhouseUID": "awep09uifojd",
-        "realSensorID": "1",
-    }
-    ```
-    """
-    permission_classes = [IsAuthenticated]
-
-    def delete(self, request):
-        payload = request.data
-        payload.setdefault("greenhouseUID", None)
-        payload.setdefault("realSensorID", None)
-
-        # validate
-        if payload["greenhouseUID"] is None:
-            print("greenhouseUID is not included in request data")
-            return Response({"message": "please include greenhouseUID in request data"}, status=status.HTTP_400_BAD_REQUEST)
-        if payload["realSensorID"] is None:
-            print("realSensorID is not included in request data")
-            return Response({"message": "please include realSensorID in request data"}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            greenhouse = GreenhouseModel.objects.get(
-                uid=payload["greenhouseUID"])
-            realSensor = RealSensorModel.objects.get(
-                greenhouse=greenhouse, realSensorID=payload["realSensorID"])
-        except Exception as e:
-            print(e)
-            return Response("content not found", status=status.HTTP_204_NO_CONTENT)
-
-        realSensor.delete()
-
-        return Response("realSensor is deleted", status=status.HTTP_200_OK)
-
-
-class DeleteControllerAPI(APIView):
-    """
-    Delete the real sensor data
-
-    - method: DELETE
-    - authentication: "Authorization"" "Token <token>"
-
-    #### Request data format
-    ```
-    {
-        "greenhouseUID": "awep09uifojd",
-        "controllerID": "1",
-    }
-    ```
-    """
-    permission_classes = [IsAuthenticated]
-
-    def delete(self, request):
-        payload = request.data
-        payload.setdefault("greenhouseUID", None)
-        payload.setdefault("controllerID", None)
-
-        # validate
-        if payload["greenhouseUID"] is None:
-            print("greenhouseUID is not included in request data")
-            return Response({"message": "please include greenhouseUID in request data"}, status=status.HTTP_400_BAD_REQUEST)
-        if payload["controllerID"] is None:
-            print("controllerID is not included in request data")
-            return Response({"message": "please include controllerID in request data"}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            greenhouse = GreenhouseModel.objects.get(
-                uid=payload["greenhouseUID"])
-            controller = ControllerModel.objects.get(
-                greenhouse=greenhouse, controllerID=payload["controllerID"])
-        except Exception as e:
-            print(e)
-            return Response({"message": "content not found"}, status=status.HTTP_204_NO_CONTENT)
-
-        controller.delete()
-        return Response({"message": "realSensor is deleted"}, status=status.HTTP_200_OK)
-
-
-"""
-Get API
-"""
-
-
-# NOTE: not used nows
-class GetGreenhouseBasicInfoAPI(APIView):
-    """
-    Return the uids and basic infos for all the greenhouses belong to the user
-
-    - method: GET
-    - authentication: "Authorization"" "Token <token>"
-    - return: list of greenhouse uids
-    """
-    permission_classes = [IsAuthenticated]
-
+    # get all api
     def get(self, request):
-
-        user = request.user
-        greenhouses = list(GreenhouseModel.objects.filter(owner=user))
-
-        resultList = []
-
-        for g in greenhouses:
-            resultList.append(
+        """
+        #### Return data format
+        {
+            "greenhouseUID": "cf7cf83d-2983-4c49-b22c-5ff98cd99d88",
+            "owner": 1,
+            "name": "test_greenhouse",
+            "address": "test_address",
+            "beginDate": "2011-03-21",
+            "photo": null,
+            "realSensors": [
                 {
-                    "uid": g.uid,
-                    "name": g.name,
-                    "address": g.address,
-                    "beginDate": g.beginDate,
+                    "id": 12,
+                    "greenhouse": "cf7cf83d-2983-4c49-b22c-5ff98cd99d88",
+                    "itemName": "感測器",
+                    "realSensorID": "AirSensor_1",
+                    "realSensorKey": "AirSensor",
+                    "electricity": 100.0,
+                    "lat": 24.112,
+                    "lng": 47.33
+                },
+                {
+                    "id": 13,
+                    "greenhouse": "cf7cf83d-2983-4c49-b22c-5ff98cd99d88",
+                    "itemName": "感測器",
+                    "realSensorID": "AirSensor_2",
+                    "realSensorKey": "AirSensor",
+                    "electricity": 100.0,
+                    "lat": 24.112,
+                    "lng": 47.33
                 }
-            )
-
-        return Response(
-            resultList,
-            status=status.HTTP_200_OK
-        )
-
-
-class GetGreenhouseDataAPI(APIView):  # TODO: check
-    """
-    Return a list of greenhouseMainData map for the user
-
-    ```
-    [
-    {
-        "greenhouseUID": "6db7e7ec-e841-400e-81ec-bbca7901705b",
-        "owner": 1,
-        "realSensors": [
-        {
-            "id": 10,
-            "greenhouse": "6db7e7ec-e841-400e-81ec-bbca7901705b",
-            "itemName": "感測器",
-            "realSensorID": "AirSensor_1",
-            "realSensorKey": "AirSensor",
-            "electricity": 100.0,
-            "lat": 24.112,
-            "lng": 47.33
-        },
-        {
-            "id": 11,
-            "greenhouse": "6db7e7ec-e841-400e-81ec-bbca7901705b",
-            "itemName": "感測器",
-            "realSensorID": "AirSensor_2",
-            "realSensorKey": "AirSensor",
-            "electricity": 100.0,
-            "lat": 24.112,
-            "lng": 47.33
+            ],
+            "sensors": {
+            "airHumidity": [
+                {
+                    "itemName": "感測項目",
+                    "realSensorID": 12,
+                    "value": 22.0
+                },
+                {
+                    "itemName": "感測項目",
+                    "realSensorID": 13,
+                    "value": 22.0
+                }
+            ],
+            "airTemp": [
+                {
+                "itemName": "感測項目",
+                "realSensorID": 12,
+                "value": 31.0
+                },
+                {
+                "itemName": "感測項目",
+                "realSensorID": 13,
+                "value": 31.0
+                }
+            ]
+            },
+            "controllers": {
+            "fan": [
+                {
+                    "greenhouseUID": "cf7cf83d-2983-4c49-b22c-5ff98cd99d88",
+                    "controllerID": "Fan_1",
+                    "controllerKey": "fan",
+                    "electricity": 100.0,
+                    "itemName": "控制器",
+                    "lat": 24.112,
+                    "lng": 47.33,
+                    "setting": {
+                        "id": 15,
+                        "controller": 16,
+                        "openTemp": 21.0,
+                        "closeTemp": 20.0,
+                        "evalveSchedules": [],
+                        "timestamp": "2024-04-03T17:04:04Z",
+                        "isCurrent": true
+                    },
+                    "on": true,
+                    "manualControl": false
+                }
+            ],
+            "evalve": [
+                {
+                    "greenhouseUID": "cf7cf83d-2983-4c49-b22c-5ff98cd99d88",
+                    "controllerID": "evalve_1",
+                    "controllerKey": "evalve",
+                    "electricity": 100.0,
+                    "itemName": "控制器",
+                    "lat": 24.112,
+                    "lng": 47.33,
+                    "setting": {
+                        "id": 14,
+                        "controller": 15,
+                        "openTemp": null,
+                        "closeTemp": null,
+                        "timestamp": "2024-04-03T17:04:04Z",
+                        "isCurrent": true,
+                        "cutHumidity": [
+                        30.0,
+                        30.0
+                        ],
+                        "duration": [
+                        "00:00:15",
+                        "00:00:15"
+                        ],
+                        "startTime": [
+                        "15:00:00",
+                        "16:00:00"
+                        ]
+                    },
+                    "on": true,
+                    "manualControl": false
+                }
+            ]
+            }
         }
-        ],
-        "name": "test_greenhouse",
-        "address": "test_address",
-        "beginDate": "2011-03-21",
-        "photo": null,
-        "sensors": {
-        "airHumidity": [
-            {
-            "itemName": "感測項目",
-            "realSensorID": 10,
-            "value": 22.0
-            },
-            {
-            "itemName": "感測項目",
-            "realSensorID": 11,
-            "value": 22.0
-            }
-        ],
-        "airTemp": [
-            {
-            "itemName": "感測項目",
-            "realSensorID": 10,
-            "value": 31.0
-            },
-            {
-            "itemName": "感測項目",
-            "realSensorID": 11,
-            "value": 31.0
-            }
-        ]
-        },
-        "controllers": {
-        "fan": [
-            {
-            "greenhouseUID": "6db7e7ec-e841-400e-81ec-bbca7901705b",
-            "controllerID": "Fan_1",
-            "controllerKey": "fan",
-            "electricity": 100.0,
-            "itemName": "控制器",
-            "lat": 24.112,
-            "lng": 47.33,
-            "setting": {
-                "id": 13,
-                "controller": 14,
-                "openTemp": 21.0,
-                "closeTemp": 20.0,
-                "evalveSchedules": [],
-                "timestamp": "2024-04-03T17:04:04Z",
-                "isCurrent": true
-            },
-            "on": true,
-            "manualControl": false
-            }
-        ],
-        "evalve": [
-            {
-            "greenhouseUID": "6db7e7ec-e841-400e-81ec-bbca7901705b",
-            "controllerID": "Watering_1",
-            "controllerKey": "evalve",
-            "electricity": 100.0,
-            "itemName": "控制器",
-            "lat": 24.112,
-            "lng": 47.33,
-            "setting": {
-                "id": 12,
-                "controller": 13,
-                "openTemp": null,
-                "closeTemp": null,
-                "timestamp": "2024-04-03T17:04:04Z",
-                "isCurrent": true,
-                "cutHumidity": [
-                30.0,
-                30.0
-                ],
-                "duration": [
-                "00:00:15",
-                "00:00:15"
-                ],
-                "startTime": [
-                "15:00:00",
-                "16:00:00"
-                ]
-            },
-            "on": true,
-            "manualControl": false
-            }
-        ]
-        }
-    },
-    {
-        "greenhouseUID": "cf7cf83d-2983-4c49-b22c-5ff98cd99d88",
-        "owner": 1,
-        "realSensors": [
-        {
-            "id": 12,
-            "greenhouse": "cf7cf83d-2983-4c49-b22c-5ff98cd99d88",
-            "itemName": "感測器",
-            "realSensorID": "AirSensor_1",
-            "realSensorKey": "AirSensor",
-            "electricity": 100.0,
-            "lat": 24.112,
-            "lng": 47.33
-        },
-        {
-            "id": 13,
-            "greenhouse": "cf7cf83d-2983-4c49-b22c-5ff98cd99d88",
-            "itemName": "感測器",
-            "realSensorID": "AirSensor_2",
-            "realSensorKey": "AirSensor",
-            "electricity": 100.0,
-            "lat": 24.112,
-            "lng": 47.33
-        }
-        ],
-        "name": "test_greenhouse",
-        "address": "test_address",
-        "beginDate": "2011-03-21",
-        "photo": null,
-        "sensors": {
-        "airHumidity": [
-            {
-            "itemName": "感測項目",
-            "realSensorID": 12,
-            "value": 22.0
-            },
-            {
-            "itemName": "感測項目",
-            "realSensorID": 13,
-            "value": 22.0
-            }
-        ],
-        "airTemp": [
-            {
-            "itemName": "感測項目",
-            "realSensorID": 12,
-            "value": 31.0
-            },
-            {
-            "itemName": "感測項目",
-            "realSensorID": 13,
-            "value": 31.0
-            }
-        ]
-        },
-        "controllers": {
-        "fan": [
-            {
-            "greenhouseUID": "cf7cf83d-2983-4c49-b22c-5ff98cd99d88",
-            "controllerID": "Fan_1",
-            "controllerKey": "fan",
-            "electricity": 100.0,
-            "itemName": "控制器",
-            "lat": 24.112,
-            "lng": 47.33,
-            "setting": {
-                "id": 15,
-                "controller": 16,
-                "openTemp": 21.0,
-                "closeTemp": 20.0,
-                "evalveSchedules": [],
-                "timestamp": "2024-04-03T17:04:04Z",
-                "isCurrent": true
-            },
-            "on": true,
-            "manualControl": false
-            }
-        ],
-        "evalve": [
-            {
-            "greenhouseUID": "cf7cf83d-2983-4c49-b22c-5ff98cd99d88",
-            "controllerID": "Watering_1",
-            "controllerKey": "evalve",
-            "electricity": 100.0,
-            "itemName": "控制器",
-            "lat": 24.112,
-            "lng": 47.33,
-            "setting": {
-                "id": 14,
-                "controller": 15,
-                "openTemp": null,
-                "closeTemp": null,
-                "timestamp": "2024-04-03T17:04:04Z",
-                "isCurrent": true,
-                "cutHumidity": [
-                30.0,
-                30.0
-                ],
-                "duration": [
-                "00:00:15",
-                "00:00:15"
-                ],
-                "startTime": [
-                "15:00:00",
-                "16:00:00"
-                ]
-            },
-            "on": true,
-            "manualControl": false
-            }
-        ]
-        }
-    }
-    ]
-    ```
-
-    - method: GET
-    - authentication: "Authorization": "Token <token>"
-    - return: list of greenhouseMainData
-    """
-    permission_classes = [IsAuthenticated]
-
-    def parseEvalvSchedules(self, controller):
-
-        if controller["setting"].setdefault("evalveSchedules", None):
-            scheds = controller["setting"].pop("evalveSchedules")
-            for sched in scheds:
-                controller["setting"].setdefault(
-                    "duration", []).append(sched["duration"])
-                controller["setting"].setdefault(
-                    "startTime", []).append(sched["startTime"])
-
-        return controller
-
-    def parseToAppFormat(self, data: dict):
-        realSensors = sorted(data["realSensors"],
-                             key=lambda ele: ele["realSensorID"])
-
-        data["sensors"] = {}
-        data["realSensors"] = {}
-        for rS in realSensors:
-            sensors = rS.pop("sensors")
-            data["realSensors"][rS["realSensorID"]] = rS
-            for s in sensors:
-                data["sensors"].setdefault(s.pop("sensorKey"), []).append(s)
-
-        controllers = sorted(data.pop("controllers"),
-                             key=lambda ele: ele["controllerID"])
-
-        data["controllers"] = {}
-        for c in controllers:
-            c["on"] = c["setting"].pop("on")
-            c["manualControl"] = c["setting"].pop("manualControl")
-            c = self.parseEvalvSchedules(controller=c)
-
-            data["controllers"].setdefault(c["controllerKey"], []).append(c)
-
-        return data
-
-    def get(self, request):
+        """
         user = request.user  # instance ?
         greenhouses = list(GreenhouseModel.objects.filter(owner=user))
 
@@ -590,174 +254,130 @@ class GetGreenhouseDataAPI(APIView):  # TODO: check
         )
 
 
-class GetControllerSettingToApp(APIView):
+class GreenhouseDetail(GetGreenhouseBase):
     """
-    Return the setting of the specified controllers
-
-    - method: POST
-    - authentication: "Authorization": "Token <token>"
-    - return: the controller setting for an
-
-    #### Post datas format
-    ```
-    {
-        "greenhouseUID": "340we9ufijsn",
-        "controllerKey": "evalve",
-    }
-    ```
-
-    ### Return data format
-    ```
-    [
-        {
-            "on": True,
-            "manualControl": False,
-            "itemName": "電磁罰1",
-            "settings": {
-                "cutHumidiy": [20.0, 30.0],
-                "duration": [2.0, 3.0],
-                "startTimes": ["12:00:00", "14:00:00"]
-            },
-        },
-        {
-            "on": True,
-            "manualControl": False,
-            "itemName": "電磁罰2",
-            "settings": {
-                "cutHumidiy": [20.0, 30.0],
-                "duration": [2.0, 3.0],
-                "startTimes": ["12:00:00", "14:00:00"]
-            },
-        },
-    ]
-    ```
+    API to get, update, or delete a greenhouse
+    # UNDONE: need api for updating greenhouse
     """
-    permission_classes = [IsAuthenticated]
 
-    def post(self, request):
-        greenhouse = GreenhouseModel.objects.get(
-            uid=request.data["greenhouseUID"])
-
-        # validate
-        if request.data["greenhouseUID"] is None:
-            print("greenhouseUID is not included in request data")
-            return Response({"please include greenhouseUID in request data"}, status=status.HTTP_400_BAD_REQUEST)
-
-        ret = {}
-        controllers = list(
-            ControllerModel.objects.filter(greenhouse=greenhouse))
-        for controller in controllers:
-            controllerSer = ControllerSerializer(controller)
-            controllerID = controllerSer.data["controllerID"]
-            ret[controllerID] = controllerSer.data["setting"]
-        return Response(ret, status=status.HTTP_200_OK)
-
-
-class GetSensorCurrentDataToApp(APIView):
-    """
-    Return the current value of the specified controllers
-
-    - method: POST
-    - authentication: "Authorization": "Token <token>"
-    - return: the controller setting for an
-
-    #### Post datas format
-    ```
-    {
-        "greenhouseUID": "340we9ufijsn",
-        "sensorKeys": "airHumidity",
-    }
-    ```
-
-    #### Return data format
-    ```
-    [
-        {
-            "value: 23.1,
-            "itemName": "air humidity sensor",
-            "realSensorName: "AirSensor,
-        },
-        {
-            "value: 23.1,
-            "itemName": "air humidity sensor",
-            "realSensorName: "AirSensor,
-        },
-    ],
-
-
-    ```
-    """
-    permission_classes = [IsAuthenticated]
-
-    def parseID(self, id: str):
-        pass
-
-    def post(self, request):
-        # validate
-        request.data.setdefault("greenhouseUID", None)
-        request.data.setdefault("sensorKeys", None)
-
-        if request.data["greenhouseUID"] is None:
-            print("greenhouseUID is not included in request data")
-            return Response({"please include greenhouseUID in request data"}, status=status.HTTP_400_BAD_REQUEST)
-        if request.data["sensorKeys"] is None:
-            print("sensorKeys is not included in request data")
-            return Response({"please include sensorKeys in request data"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # get greenhouse
-        greenhouse = GreenhouseModel.objects.get(
-            uid=request.data["greenhouseUID"])
-
-        realSensors = list(
-            RealSensorModel.objects.filter(greenhouse=greenhouse))
-
-        if len(realSensors) == 0:
-            return Response({"message": "no sensor found"}, status=status.HTTP_204_NO_CONTENT)
-
-        allSensors = SensorModel.objects.filter(parentItem__in=realSensors)
-
-        if len(allSensors) == 0:
-            return Response({"message": "no sensor found"}, status=status.HTTP_204_NO_CONTENT)
-
-        ret = {}
-        for sensorKey in request.data["sensorKeys"]:
-            ret[sensorKey] = []
-            selectedSensors = list(allSensors.filter(sensorKey=sensorKey))
-
-            for sensor in selectedSensors:
-                sensorData = SensorSerializer(sensor).data
-                sensorData["realSensorID"] = sensorData.pop(
-                    "realSensorID").realSensorID
-                ret[sensorKey].append(sensorData)
-
-        return Response(ret, status=status.HTTP_200_OK)
-
-
-class GetSensorHistoryAPI(APIView):
-
-    # UNDONE: not fully implemented
-    def post(self, request):
+    def delete(self, request, greenhouseUID):
         """
-        Return the history data information of a sensor in specific time range.
+        Delete the greenhouse with uid == greenhouseUID
+
+        - method: DELETE
+        - authentication: "Authorization"" "Token <token>"
+        """
+
+        GreenhouseModel.objects.get(uid=greenhouseUID).delete()
+        return Response({"message": "greenhouse is deleted"}, status=status.HTTP_200_OK)
+
+    def get(self, req, greenhouseUID):
+        try:
+            greenhouse = GreenhouseModel.objects.get(
+                greenhouseUID=greenhouseUID)
+        except GreenhouseModel.DoesNotExist:
+            return Response({"error": "greenhouse does not exist"}, status=status.HTTP_404_NOT_FOUND)
+
+        ser = GreenhouseSerializer(greenhouse)
+        greenhouseData = self.parseToAppFormat(ser.data)
+        return Response(greenhouseData, status=status.HTTP_200_OK)
+
+
+class Controller(AppBaseAPI):
+    """
+    API to get all controllers in a greenhouse
+    """
+
+    def get(self, request, greenhouseUID):
+        """ Get all controller in the greenhouse"""
+        try:
+            greenhouse = GreenhouseModel.objects.get(
+                greenhouseUID=greenhouseUID)
+
+            ret = {}
+            controllers = list(
+                ControllerModel.objects.filter(greenhouse=greenhouse))
+
+            for controller in controllers:
+                controllerSer = ControllerSerializer(controller)
+                controllerID = controllerSer.data["controllerID"]
+                ret[controllerID] = controllerSer.data["setting"]
+
+            return Response(ret, status=status.HTTP_200_OK)
+
+        except GreenhouseModel.DoesNotExist:
+            print("greenhouse does not exist")
+            return Response({"error": "greenhouse does not exist"}, status=status.HTTP_404_NOT_FOUND)
+
+    def put(self, req, greenhouseUID):
+        """
+        Update the corresponding controller setting
 
         - method: POST
-        - authentication: "Authorization": "Token <token>"
-        - return: list of history values, start date, unitScale, datelength
+        - update: update the corresponding data field in database
 
-        #### Post datas format
+        #### Request format
+        ```
+        [
+            {
+                "controllerID": "evalve_0", 
+                "setting": {
+                    "on": True,
+                    "manualControl": False,
+                    "timestamp": "2024-04-03 17:04:04",
+                    "cutHumidity": 21.3,
+                    "evalveSchedules": [
+                        {"duration": 12, "startTime": "15:00"},
+                    ]
+                }
+            },
+            {
+                "controllerID": "evalve_1", 
+                "setting": {
+                    "on": True,
+                    "manualControl": False,
+                    "timestamp": "2024-04-03 17:04:04",
+                    "cutHumidity": 21.3,
+                    "evalveSchedules": [
+                        {"duration": 12, "startTime": "15:00"},
+                    ]
+                }
+            },
+        ]
+
+        ```
         """
-        raise NotImplementedError
+        try:
+            greenhouse = GreenhouseModel.objects.get(
+                greenhouseUID=greenhouseUID)
+
+            for controllerData in req.data:
+                controller = ControllerModel.objects.get(
+                    greenhouse=greenhouse, controllerID=controllerData["controllerID"])
+                settingData = controllerData["setting"]
+                settingData["controller"] = controller.id
+                ser = ControllerSettingSerializer(data=settingData)
+
+                if not ser.is_valid():
+                    print(ser.errors)
+                    return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
+
+                ser.save()
+            return Response({"message": "controller updated"}, status=status.HTTP_200_OK)
+
+        except GreenhouseModel.DoesNotExist:
+            print("greenhouse uid:", greenhouseUID)
+            return Response({"message": "greenhouse not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        except ControllerModel.DoesNotExist:
+            print(f"controllerID {controllerData['controllerID']} not found")
+            return Response({"message": f"controllerID {controllerData['controllerID']} not found"}, status=status.HTTP_404_NOT_FOUND)
 
 
-"""
-Update API
-"""
+class ControllerDetail(AppBaseAPI):
+    """ API to update, delete or get a specific controller"""
 
-
-class UpdateControllerInfoAPI(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def patch(self, request):
+    def patch(self, request, greenhouseUID, controllerID):
         """
         Update the basic info of a controller # NOTE: there is nothing to be changed currently
 
@@ -769,7 +389,7 @@ class UpdateControllerInfoAPI(APIView):
         ```
         {
             "greenhouseUID": "a9jwjenfaksj",
-            "controllerID": "Watering_1",
+            "controllerID": "evalve_1",
             # fields to be changed
             "lat": 32.1, # optional
             "lng": 18.3, # optional
@@ -777,134 +397,112 @@ class UpdateControllerInfoAPI(APIView):
         ```
         """
         payload = request.data
-        # get data
 
         try:
             greenhouse = GreenhouseModel.objects.get(
-                uid=payload["greenhouseUID"])
-        except Exception as e:
-            print(e)
-            print("greenhouse uid:", payload["greenhouseUID"])
-            return Response({"message": "greenhouse not found"}, status=status.HTTP_204_NO_CONTENT)
-
-        try:
+                greenhouseUID=greenhouseUID)
             controller = ControllerModel.objects.get(
-                greenhouse=greenhouse, controllerID=payload.pop("controllerID"))
-        except Exception as e:
-            print(e)
-            print(f"contollerID: {request.data['controllerID']}")
-            return Response({"message": "controller not found"}, status=status.HTTP_204_NO_CONTENT)
+                greenhouse=greenhouse, controllerID=controllerID)
 
-        # update
-        ser = ControllerSerializer(
-            controller, data=payload, partial=True)
-        if ser.is_valid():
-            ser.save()
-            ret = ser.data
-            ret["greenhouse"] = ser.data["greenhouse"].uid
-            return Response(ret, status=status.HTTP_200_OK)
-        return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
+            # update
+            ser = ControllerSerializer(
+                controller, data=payload, partial=True)
 
+            if ser.is_valid():
+                ser.save()
+                ret = ser.data
+                ret["greenhouseUID"] = ser.data["greenhouseUID"]
+                return Response(ret, status=status.HTTP_200_OK)
 
-class UpdateControllerSettingAPI(APIView):
-    permission_classes = [IsAuthenticated]
+            return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
+        except GreenhouseModel.DoesNotExist:
+            print(f"greenhouse {greenhouseUID} not found")
+            return Response({"message": "greenhouse not found"}, status=status.HTTP_404_NOT_FOUND)
+        except ControllerModel.DoesNotExist:
+            print(f"controllerID {controllerID} not found")
+            return Response({"message": f"controllerID {controllerID} not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    def post(self, request):
-        """
-        Update the corresponding controller data from the request object
+    def delete(self, request, greenhouseUID, controllerID):
+        payload = request.data
 
-        - method: POST
-        - update: update the corresponding data field in database
-
-        #### Request format
-        ```
-        {
-            "greenhouseUID": "a9jwjenfaksj",
-            "settings": {
-                "Watering_0": {
-                    "on": True,
-                    "manualControl": False,
-                    "timestamp": "2024-04-03 17:04:04",
-                    "evalveSchedules": [
-                        {"cutHumidity": 12, "duration": 12, "startTime": "15:00"},
-                    ]
-                },
-                "Watering_1": {
-                    "on": True,
-                    "manualControl": False,
-                    "timestamp": "2024-04-03 17:04:04",
-                    "evalveSchedules": [
-                        {"cutHumidity": 12, "duration": 12, "startTime": "15:00"},
-                    ]
-                }
-            }
-        }
-        ```
-        """
         try:
             greenhouse = GreenhouseModel.objects.get(
-                uid=request.data["greenhouseUID"])
+                greenhouseUID=greenhouseUID)
+            controller = ControllerModel.objects.get(
+                greenhouse=greenhouse, controllerID=controllerID)
+        except GreenhouseModel.DoesNotExist:
+            print(f"greenhouse {greenhouseUID} not found")
+            return Response({"message": "greenhouse not found"}, status=status.HTTP_404_NOT_FOUND)
+        except ControllerModel.DoesNotExist:
+            print(f"controllerID {controllerID} not found")
+            return Response({"message": f"controllerID {controllerID} not found"}, status=status.HTTP_404_NOT_FOUND)
 
-            notFound = []
-            for controllerID, setting in request.data["settings"].items():
-                controller = ControllerModel.objects.filter(
-                    greenhouse=greenhouse, controllerID=controllerID)
-
-                if len(controller) == 0:
-                    print("controller not found", controllerID)
-                    notFound.append(controllerID)
-                    continue
-
-                setting["controller"] = controller[0]
-                controllerSettingSer = ControllerSettingSerializer()
-                controllerSettingSer.create(setting)
-
-            return Response({"message": "controller updated", "notFound": notFound}, status=status.HTTP_200_OK)
-
-        except GreenhouseModel.DoesNotExist as e:
-            print(f"greenhouse not found")
-            return Response({"message": "greenhouse does not exist"}, status=status.HTTP_204_NO_CONTENT)
+        controller.delete()
+        return Response({"message": "realSensor is deleted"}, status=status.HTTP_200_OK)
 
 
-class UpdateRealSensorInfoAPI(APIView):
-    """
-    Update the corresponding real sensor data from the request object
+class RealSensorAPI(AppBaseAPI):
+    """ API for deleting, updating and getting real sensor detail"""
 
-    - method: PATCH
-    - authentication: "Authorization": "Token <token>"
-
-   #### Request data format
-   ```
-   {
-        "greenhouseUID": "a9jwjenfaksj",
-        "realSensorID": "AirSensor",
-        # fields to be changed
-        "lat": 32.1, # optional
-        "lng": 18.3, # optional
-        "electricity": 88.2,
-    }
-    ```
-    """
-    permission_classes = [IsAuthenticated]
-
-    def patch(self, request):
+    def patch(self, request, greenhouseUID, realSensorID):
+        """ Update real sensor basic information """
         payload = request.data
 
         # get data
         try:
             greenhouse = GreenhouseModel.objects.get(
-                uid=payload.pop("greenhouseUID"))
+                greenhouseUID=greenhouseUID)
             realSensor = RealSensorModel.objects.get(
-                greenhouse=greenhouse, realSensorID=payload.pop("realSensorID"))
-        except Exception as e:
-            print(e)
-            print(f"realSensorID: {request.data['realSensorID']}")
-            return Response({"message": "real sensor does not exists"}, status=status.HTTP_204_NO_CONTENT)
+                greenhouse=greenhouse, realSensorID=realSensorID)
 
-        # update
-        ser = RealSensorSerializer(
-            realSensor, data=payload, partial=True)
-        if ser.is_valid():
-            ser.save()
-            return Response({"message": "sensor updated"}, status=status.HTTP_200_OK)
-        return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
+            # update
+            ser = RealSensorSerializer(
+                realSensor, data=payload, partial=True)
+
+            if ser.is_valid():
+                ser.save()
+                return Response({"message": "sensor updated"}, status=status.HTTP_200_OK)
+            return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        except GreenhouseModel.DoesNotExist:
+            print(f"greenhouse {greenhouseUID} not found")
+            return Response({"message": "greenhouse not found"}, status=status.HTTP_404_NOT_FOUND)
+        except ControllerModel.DoesNotExist:
+            print(f"realSensorID: {realSensorID} no found")
+            return Response({"errors": f"realSensorID: {realSensorID} no found"}, status=status.HTTP_404_NOT_FOUND)
+
+    def delete(self, request, greenhouseUID, realSensorID):
+        payload = request.data
+
+        try:
+            greenhouse = GreenhouseModel.objects.get(
+                greenhouseUID=greenhouseUID)
+            realSensor = RealSensorModel.objects.get(
+                greenhouse=greenhouse, realSensorID=realSensorID)
+
+            realSensor.delete()
+
+            return Response("realSensor is deleted", status=status.HTTP_200_OK)
+
+        except GreenhouseModel.DoesNotExist:
+            print(f"greenhouse {greenhouseUID} not found")
+            return Response({"message": "greenhouse not found"}, status=status.HTTP_404_NOT_FOUND)
+        except ControllerModel.DoesNotExist:
+            print(f"realSensorID: {realSensorID} no found")
+            return Response({"errors": f"realSensorID: {realSensorID} no found"}, status=status.HTTP_404_NOT_FOUND)
+
+
+class SensorAPI(AppBaseAPI):
+
+    # UNDONE: not fully implemented
+    def get(self, request):
+        """
+        Return the history data information of a sensor in specific time range.
+
+        - method: POST
+        - authentication: "Authorization": "Token <token>"
+        - return: list of history values, start date, unitScale, datelength
+
+        #### Post datas format
+        """
+        raise NotImplementedError
