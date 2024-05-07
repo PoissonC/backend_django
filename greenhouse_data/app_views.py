@@ -1,11 +1,7 @@
-from django.shortcuts import render
-from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.authtoken.models import Token
-from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
-
-from datetime import datetime
+from django.core import exceptions
+from statistics import fmean
 
 from .models import *
 from .serializer import *
@@ -423,22 +419,21 @@ class ControllerDetail(AppBaseAPI):
             return Response({"message": f"controllerID {controllerID} not found"}, status=status.HTTP_404_NOT_FOUND)
 
     def delete(self, request, greenhouseUID, controllerID):
-        payload = request.data
 
         try:
             greenhouse = GreenhouseModel.objects.get(
                 greenhouseUID=greenhouseUID)
             controller = ControllerModel.objects.get(
                 greenhouse=greenhouse, controllerID=controllerID)
+
+            controller.delete()
+            return Response({"message": "realSensor is deleted"}, status=status.HTTP_200_OK)
         except GreenhouseModel.DoesNotExist:
             print(f"greenhouse {greenhouseUID} not found")
             return Response({"message": "greenhouse not found"}, status=status.HTTP_404_NOT_FOUND)
         except ControllerModel.DoesNotExist:
             print(f"controllerID {controllerID} not found")
             return Response({"message": f"controllerID {controllerID} not found"}, status=status.HTTP_404_NOT_FOUND)
-
-        controller.delete()
-        return Response({"message": "realSensor is deleted"}, status=status.HTTP_200_OK)
 
 
 class RealSensorAPI(AppBaseAPI):
@@ -493,9 +488,77 @@ class RealSensorAPI(AppBaseAPI):
 
 
 class SensorAPI(AppBaseAPI):
+    def findUnitScale(self, startTime: datetime.datetime, endTime: datetime.datetime, labelScale=3):
+        hoursDiff = endTime - startTime
+        hoursDiff = int(hoursDiff.days * 24 + hoursDiff.seconds // 3600)
+
+        if (hoursDiff < 12 * labelScale):
+            unitScale = 1
+        elif (hoursDiff >= 12 * labelScale and hoursDiff < 24 * labelScale):
+            unitScale = 2
+        elif (hoursDiff >= 24 * labelScale and hoursDiff < 36 * labelScale):
+            unitScale = 3
+        elif (hoursDiff >= 36 * labelScale and hoursDiff < 48 * labelScale):
+            unitScale = 4
+        elif (hoursDiff >= 48 * labelScale and hoursDiff < 72 * labelScale):
+            unitScale = 6
+        elif (hoursDiff >= 72 * labelScale and hoursDiff < 144 * labelScale):
+            unitScale = 12
+        elif (hoursDiff >= 144 * labelScale):
+            unitScale = 24 * (hoursDiff // (24 * 4 * labelScale))
+        else:
+            print(f"ERROR: negative hourDiff. hoursDiff={hoursDiff}")
+            raise ValidationError(
+                {f"ERROR: negative hourDiff. hoursDiff={hoursDiff}"})
+
+        return unitScale
+
+    def hourly(self, startTime: datetime, endTime: datetime, delta=datetime.timedelta(hours=1)):
+        currentTime = startTime
+        while currentTime <= endTime and currentTime < datetime.datetime.now():
+            yield currentTime
+            currentTime += delta
+
+    def findHourlyData(self, historyInstances, startTime: datetime, endTime: datetime):
+        hourlyData = []
+        lastData = None
+        broken = False
+
+        for t in self.hourly(startTime=startTime, endTime=endTime):
+            timeInstance = list(historyInstances.filter(
+                timestamp__range=[
+                    t-datetime.timedelta(minutes=15),
+                    t+datetime.timedelta(minutes=15),
+                ]
+            ))
+
+            if len(timeInstance) > 0:
+                print("get time instance")
+                hourlyData.append(timeInstance[0].value)
+                lastData = hourlyData[-1]
+                continue
+
+            if lastData:
+                print("using last data")
+                hourlyData.append(lastData)
+                lastData = hourlyData[-1]
+                continue
+
+            print(f"finding data at {t} from future instances")
+            broken = True
+            break
+
+        if broken:
+            t = t+datetime.timedelta(hours=1)
+            nextDatas = self.findHourlyData(historyInstances, t, endTime)
+            hourlyData += [nextDatas[0]]
+            hourlyData += nextDatas
+
+        return hourlyData
 
     # UNDONE: not fully implemented
-    def get(self, request):
+
+    def get(self, request, greenhouseUID, realSensorID, sensorKey):
         """
         Return the history data information of a sensor in specific time range.
 
@@ -503,6 +566,84 @@ class SensorAPI(AppBaseAPI):
         - authentication: "Authorization": "Token <token>"
         - return: list of history values, start date, unitScale, datelength
 
-        #### Post datas format
+        #### Parameters
+        - startTime: "YYYY-MM-DD HH:mm:ss"
+        - endTime: "YYYY-MM-DD HH:mm:ss" 
+
+        #### Return data format
+        {
+            "historyDatas": [19, 20.1, 33.2, 21.3],
+            "initialDateTime": "2024-03-21 00:00:00",
+            "unitScale": 2, # 2 hours
+        }
         """
-        raise NotImplementedError
+        try:
+            # get start time and end time
+            startTime = request.query_params.get("startTime")
+            endTime = request.query_params.get("endTime")
+
+            if startTime is None:
+                return Response({"error": "please provide startTime in query"}, status=status.HTTP_400_BAD_REQUEST)
+            if endTime is None:
+                return Response({"error": "please provide endTime in query"}, status=status.HTTP_400_BAD_REQUEST)
+
+            startTime = datetime.datetime.fromisoformat(startTime)
+            endTime = datetime.datetime.fromisoformat(endTime)
+
+            # get history instances
+            greenhouse = GreenhouseModel.objects.get(
+                greenhouseUID=greenhouseUID)
+            realSensor = RealSensorModel.objects.get(
+                greenhouse=greenhouse,
+                realSensorID=realSensorID,
+            )
+            sensor = SensorModel.objects.get(
+                realSensor=realSensor, sensorKey=sensorKey)
+            historyInstances = SensorValueHistoryModel.objects.filter(
+                sensor=sensor,
+                timestamp__range=[startTime, endTime],
+            )
+
+            if len(historyInstances) == 0:
+                return Response({"message": "no history found"}, status=status.HTTP_204_NO_CONTENT)
+
+            """
+            TODO: design an algorithm to acheive following goals
+            - find suitable unitScale for the timerange
+            - check if data exist in each hour
+            - replace missing data with the last element value in the list
+            - if we cannot find the existing data until the start of the list, try getting the next data instead
+            - if we still cannot find any existing data until the end of the list, return no_value respond 
+            """
+            historyDatas = []
+            unitScale = self.findUnitScale(startTime, endTime)
+            hourlyData = self.findHourlyData(
+                historyInstances, startTime, endTime)
+
+            i = 0
+            while i < len(hourlyData):
+                if (i + unitScale) <= len(hourlyData):
+                    historyDatas.append(fmean(hourlyData[i:i+unitScale]))
+                    i += unitScale
+                else:
+                    historyDatas.append(fmean(hourlyData[i:]))
+                    break
+
+            return Response(
+                {
+                    "historyDatas": historyDatas,
+                    "initialTime": startTime.isoformat(),
+                    "unitScale": unitScale,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except GreenhouseModel.DoesNotExist:
+            print(f"greenhouse {greenhouseUID} not found")
+            return Response({"message": "greenhouse not found"}, status=status.HTTP_404_NOT_FOUND)
+        except RealSensorModel.DoesNotExist:
+            print(f"real sensor {realSensorID} not found")
+            return Response({"errors": f"realSensor {realSensorID} not found"}, status=status.HTTP_404_NOT_FOUND)
+        except SensorModel.DoesNotExist:
+            print(f"sensor {sensorKey} not found")
+            return Response({"errors": f"sensorKey: {sensorKey} not found"}, status=status.HTTP_404_NOT_FOUND)

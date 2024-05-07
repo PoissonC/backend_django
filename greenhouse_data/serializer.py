@@ -108,14 +108,26 @@ class SensorSerializer(serializers.ModelSerializer):
         model = SensorModel
         fields = '__all__'
 
+    def getClosestHour(self, timestamp: str):
+        time = datetime.datetime.fromisoformat(timestamp)
+        roundedTime = time.replace(
+            second=0, microsecond=0, minute=0, hour=time.hour)
+        +timedelta(hours=time.minute//30)
+
+        return roundedTime.isoformat()
+
     def create(self, valData):
         """ The method is for the first declaration of the sensor"""
-        valData.setdefault("realSensor", None)
         # TODO: add default naming function
         valData.setdefault("itemName", "感測器")
-        if valData["realSensor"] is None:
+        valData.setdefault("timestamp", datetime.datetime.now().isoformat())
+
+        if valData.setdefault("realSensor", None) is None:
             raise serializers.ValidationError(
                 {"realSensor parameter is required when creating Sensor instance"})
+
+        valData["timestamp"] = self.getClosestHour(
+            timestamp=valData["timestamp"])
 
         sensor = SensorModel.objects.create(
             sensorKey=valData.pop("sensorKey"),

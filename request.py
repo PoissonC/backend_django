@@ -312,6 +312,19 @@ def get_controller_to_app() -> requests.Response:
     return res
 
 
+@api_test
+def get_sensor_history():
+    res = requests.get(
+        url=f"http://{host}/app/sensor/{sample_greenhouse_uid}/AirSensor_4/airHumidity?startTime=2024-03-20T22:00:00&endTime=2024-03-21T07:00:00",
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Token {token}",
+        },
+    )
+
+    return res
+
+
 """
 greenhouse deleter
 """
@@ -497,9 +510,10 @@ if __name__ == '__main__':
     # get_one_greenhouse()
     # get_controller_to_app()
     # get_controller_to_gre()
+    get_sensor_history()
 
-    update_controller_info()
-    update_controller_setting()
+    # update_controller_info()
+    # update_controller_setting()
     # update_sensor_info()
     # update_sensor_data()
     pass

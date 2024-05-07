@@ -1,3 +1,16 @@
 {
-  "message": "controller updated"
+  "historyDatas": [
+    28.0,
+    28.0,
+    28.0,
+    28.9,
+    28.9,
+    27.5,
+    27.5,
+    27.5,
+    27.5,
+    27.5
+  ],
+  "initialTime": "2024-03-20T22:00:00",
+  "unitScale": 1
 }

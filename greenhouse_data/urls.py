@@ -11,7 +11,7 @@ urlpatterns = [
     path("app/controller/<greenhouseUID>", app_views.Controller.as_view()),
     path("app/realSensor/<greenhouseUID>/<realSensorID>",
          app_views.RealSensorAPI.as_view()),
-    path("app/sensor/<greenhouseUID>/<sensorKey>",
+    path("app/sensor/<greenhouseUID>/<realSensorID>/<sensorKey>",
          app_views.SensorAPI.as_view()),
 
     # greenhouse
