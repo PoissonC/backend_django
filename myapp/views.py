@@ -1,11 +1,9 @@
-from django.shortcuts import render
 
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 
 # Create your views here.
-from django.contrib.auth import authenticate, login, logout
-from .forms import SignupForm, LoginForm
+from django.contrib.auth import authenticate
 from django.http import JsonResponse, HttpResponse
 from django.middleware.csrf import get_token
 from rest_framework.views import APIView
@@ -13,11 +11,10 @@ from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework import status
 
-from django.contrib.auth.models import User
-from django.contrib.auth.hashers import make_password
 
 from rest_framework.permissions import IsAuthenticated
 from .serializers import ChangePasswordSerializer, UserRegistrationSerializer
+from .models import *
 
 
 class LogoutAPIView(APIView):
@@ -78,6 +75,13 @@ class SignupAPIView(APIView):
             # Retrieve the token created for the user
             token = Token.objects.get(user=user)
             return Response({"token": token.key, "user_id": user.id, "username": user.username}, status=status.HTTP_201_CREATED)
+
+        Customer.objects.create(
+            user=user,
+            email=request.data.setdefault("email", None),
+            phoneNumber=request.data.setdefault("phoneNumber", None),
+        )
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -98,6 +102,10 @@ class LoginAPIView(APIView):
             # Delete any existing token for the user and create a new one
             Token.objects.filter(user=user).delete()
             token = Token.objects.create(user=user)
+
+            # return user information
+            Customer.objects.get(user=user)
+
             return Response({"token": token.key}, status=status.HTTP_200_OK)
         else:
             print("Invalid credential")

@@ -7,7 +7,8 @@ from .models import *
 from .serializer import *
 from .api_base import *
 
-# TODO: implement all apis
+# TODO: add update greenhouse api
+# TODO: add get user information api
 
 
 class Greenhouse(GetGreenhouseBase):
@@ -28,64 +29,64 @@ class Greenhouse(GetGreenhouseBase):
         #### Post format example
         ```
         {
-                "name": "test_greenhouse",
-                "address": "test_address",
-                "beginDate": "2011-03-21",
-                "realSensors": {
-                    "AirSensor_1": {
-                        "electricity": 100,
-                        "lat": 24.112,
-                        "lng": 47.330,
-                        "sensors": {
-                            "airHumidity": {"value": 22, "timestamp": "2024-04-03 17:04:04"},
-                            "airTemp": {"value": 31, "timestamp": "2024-04-03 17:04:04"},
-                        }
-                    },
-                    "AirSensor_2": {
-                        "electricity": 100,
-                        "lat": 24.112,
-                        "lng": 47.330,
-                        "sensors": {
-                            "airHumidity": {"value": 22, "timestamp": "2024-04-03 17:04:04"},
-                            "airTemp": {"value": 31, "timestamp": "2024-04-03 17:04:04"},
-                        }
+            "name": "test_greenhouse",
+            "address": "test_address",
+            "beginDate": "2011-03-21",
+            "realSensors": {
+                "AirSensor_1": {
+                    "electricity": 100,
+                    "lat": 24.112,
+                    "lng": 47.330,
+                    "sensors": {
+                        "airHumidity": {"value": 22, "timestamp": "2024-04-03 17:04:04"},
+                        "airTemp": {"value": 31, "timestamp": "2024-04-03 17:04:04"},
                     }
                 },
-                "controllers": {
-                    "evalve_1": {
-                        "controllerKey": "evalve",
-                        "electricity": 100,
-                        "lat": 24.112,
-                        "lng": 47.330,
-                        "setting": {
-                            "on": True,
-                            "manualControl": False,
-                            "evalveSchedules": [
-                                {"cutHumidity": 30, "duration": 15,
-                                    "startTime": "15:00"},
-                                {"cutHumidity": 30, "duration": 15,
-                                    "startTime": "16:00"},
-                            ],
-                            "timestamp":  "2024-04-03 17:04:04",
-                        },
-
-                    },
-                    "Fan_1": {
-                        "controllerKey": "fan",
-                        "electricity": 100,
-                        "lat": 24.112,
-                        "lng": 47.330,
-                        "setting": {
-                            "on": True,
-                            "manualControl": False,
-                            "openTemp": 21,
-                            "closeTemp": 20,
-                            "timestamp": "2024-04-03 17:04:04",
-
-                        },
+                "AirSensor_2": {
+                    "electricity": 100,
+                    "lat": 24.112,
+                    "lng": 47.330,
+                    "sensors": {
+                        "airHumidity": {"value": 22, "timestamp": "2024-04-03 17:04:04"},
+                        "airTemp": {"value": 31, "timestamp": "2024-04-03 17:04:04"},
                     }
                 }
+            },
+            "controllers": {
+                "evalve_1": {
+                    "controllerKey": "evalve",
+                    "electricity": 100,
+                    "lat": 24.112,
+                    "lng": 47.330,
+                    "setting": {
+                        "on": True,
+                        "manualControl": False,
+                        "evalveSchedules": [
+                            {"cutHumidity": 30, "duration": 15,
+                                "startTime": "15:00"},
+                            {"cutHumidity": 30, "duration": 15,
+                                "startTime": "16:00"},
+                        ],
+                        "timestamp":  "2024-04-03 17:04:04",
+                    },
+
+                },
+                "Fan_1": {
+                    "controllerKey": "fan",
+                    "electricity": 100,
+                    "lat": 24.112,
+                    "lng": 47.330,
+                    "setting": {
+                        "on": True,
+                        "manualControl": False,
+                        "openTemp": 21,
+                        "closeTemp": 20,
+                        "timestamp": "2024-04-03 17:04:04",
+
+                    },
+                }
             }
+        }
         ```
 
         #### Return format
@@ -256,6 +257,32 @@ class GreenhouseDetail(GetGreenhouseBase):
     # UNDONE: need api for updating greenhouse
     """
 
+    def patch(self, req, greenhouseUID):  # NOTE: new api
+        """
+        Update greenhouse information
+        """
+
+        try:
+            payload = req.data
+            greenhouse = GreenhouseModel.objects.get(
+                greenhouseUID=greenhouseUID)
+
+            ser = GreenhouseSerializer(greenhouse, data=payload, partial=True)
+            if ser.is_valid():
+                greenhouse_instance = ser.save()
+                result = {
+                    "message": "greenhouse updated",
+                    "greenhouseUID": greenhouse_instance.greenhouseUID,
+                }
+                return Response(result, status=status.HTTP_201_CREATED)
+
+            print("validation error:", ser.errors)
+            return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        except GreenhouseModel.DoesNotExist:
+            print("greenhouse not found")
+            return Response("greenhouse not found", status=status.HTTP_404_NOT_FOUND)
+
     def delete(self, request, greenhouseUID):
         """
         Delete the greenhouse with uid == greenhouseUID
@@ -268,15 +295,19 @@ class GreenhouseDetail(GetGreenhouseBase):
         return Response({"message": "greenhouse is deleted"}, status=status.HTTP_200_OK)
 
     def get(self, req, greenhouseUID):
+        """
+        Get information for one specific greenhouse
+        """
         try:
             greenhouse = GreenhouseModel.objects.get(
                 greenhouseUID=greenhouseUID)
+
+            ser = GreenhouseSerializer(greenhouse)
+            greenhouseData = self.parseToAppFormat(ser.data)
+            return Response(greenhouseData, status=status.HTTP_200_OK)
+
         except GreenhouseModel.DoesNotExist:
             return Response({"error": "greenhouse does not exist"}, status=status.HTTP_404_NOT_FOUND)
-
-        ser = GreenhouseSerializer(greenhouse)
-        greenhouseData = self.parseToAppFormat(ser.data)
-        return Response(greenhouseData, status=status.HTTP_200_OK)
 
 
 class Controller(AppBaseAPI):
