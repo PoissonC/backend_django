@@ -2,31 +2,48 @@ from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from rest_framework.authtoken.models import Token
+from .models import *
+from phonenumber_field.serializerfields import PhoneNumberField
+
+
+class UserInforSerializer(serializers.ModelSerializer):
+
+    user = serializers.PrimaryKeyRelatedField(
+        many=False, queryset=User.objects.all())
+    phoneNumber = PhoneNumberField(allow_null=True, required=False)
+    Email = serializers.EmailField(allow_null=True, required=False)
+
+    class Meta:
+        model = UserInfoModel
+        fields = ('user', 'phoneNumber', 'Email')
+
+    def create(self, validated_data):
+        UserInfoModel.objects.create(
+            user=validated_data["user"],
+            phoneNumber=validated_data.setdefault("phoneNumber", None),
+            Email=validated_data.setdefault("Email", None),
+        )
+        return super().create(validated_data)
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
-    password1 = serializers.CharField(write_only=True, required=True)
-    password2 = serializers.CharField(write_only=True, required=True)
+    password = serializers.CharField(write_only=True, required=True)
 
     class Meta:
         model = User
-        fields = ('username', 'email', 'password1', 'password2')
+        fields = ('username', 'password')
 
     def validate(self, data):
-        if data['password1'] != data['password2']:
-            raise serializers.ValidationError(
-                {"password2": "Password fields didn't match."})
 
         # TODO: comment this line out for the validator is too annoying
-        # validate_password(data['password1'])
+        # validate_password(data['password'])
         return data
 
     def create(self, validated_data):
         user = User.objects.create(
             username=validated_data['username'],
-            email=validated_data['email']
         )
-        user.set_password(validated_data['password1'])
+        user.set_password(validated_data['password'])
         user.save()
         Token.objects.create(user=user)
         return user

@@ -33,8 +33,7 @@ def signup() -> requests.Response:
     payload = json.dumps({
         "username": "daniel",
         "email": "daniel.bb0321@gmail.com",
-        "password1": "pwd",
-        "password2": "pwd",
+        "password": "pwd",
     })
 
     res = requests.post(
@@ -510,7 +509,7 @@ if __name__ == '__main__':
     # get_one_greenhouse()
     # get_controller_to_app()
     # get_controller_to_gre()
-    get_sensor_history()
+    # get_sensor_history()
 
     # update_controller_info()
     # update_controller_setting()

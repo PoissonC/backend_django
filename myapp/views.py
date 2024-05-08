@@ -13,7 +13,7 @@ from rest_framework import status
 
 
 from rest_framework.permissions import IsAuthenticated
-from .serializers import ChangePasswordSerializer, UserRegistrationSerializer
+from .serializers import *
 from .models import *
 
 
@@ -69,20 +69,58 @@ class SignupAPIView(APIView):
     # 	return super().dispatch(*args, **kwargs)
 
     def post(self, request, *args, **kwargs):
-        serializer = UserRegistrationSerializer(data=request.data)
-        if serializer.is_valid():
+        """
+        Sign up to create an user
+
+        #### Request format
+        ```
+        {
+            "username": "daniel",
+            "password": "pwd",
+            "email": "daniel.bb0321@gmail.com",
+            "phoneNumber": "0987457321",
+        }
+        ```
+        """
+        user = None
+
+        try:
+            serializer = UserRegistrationSerializer(data={
+                "username": request.data.setdefault("username", None),
+                "email": request.data.setdefault("email", None),
+                "password": request.data.setdefault("password", None),
+            })
+
+            if not serializer.is_valid():
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
             user = serializer.save()  # The user is created and saved here
             # Retrieve the token created for the user
+
+            userInfoSer = UserInforSerializer(data={
+                "user": user.id,
+                "Email": request.data.setdefault("email", None),
+                "phoneNumber": request.data.setdefault("phoneNumber", None),
+            })
+
+            if not userInfoSer.is_valid():
+                user.delete()
+                return Response(userInfoSer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            UserInfoModel.objects.create(
+                user=user,
+                Email=request.data.setdefault("email", None),
+                phoneNumber=request.data.setdefault("phoneNumber", None),)
+            # userInfoSer.save()
+
             token = Token.objects.get(user=user)
+
             return Response({"token": token.key, "user_id": user.id, "username": user.username}, status=status.HTTP_201_CREATED)
 
-        Customer.objects.create(
-            user=user,
-            email=request.data.setdefault("email", None),
-            phoneNumber=request.data.setdefault("phoneNumber", None),
-        )
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            if user is not None:
+                user.delete()
+            raise e
 
 
 class LoginAPIView(APIView):
@@ -104,9 +142,10 @@ class LoginAPIView(APIView):
             token = Token.objects.create(user=user)
 
             # return user information
-            Customer.objects.get(user=user)
+            userInfo = UserInfoModel.objects.get(user=user)
+            userInfoData = UserInforSerializer(userInfo).data
 
-            return Response({"token": token.key}, status=status.HTTP_200_OK)
+            return Response({"token": token.key, "user": userInfoData}, status=status.HTTP_200_OK)
         else:
             print("Invalid credential")
             return Response({"error": "Invalid Credentials"}, status=status.HTTP_400_BAD_REQUEST)
