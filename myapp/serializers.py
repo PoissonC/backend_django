@@ -10,20 +10,21 @@ class UserInforSerializer(serializers.ModelSerializer):
 
     user = serializers.PrimaryKeyRelatedField(
         many=False, queryset=User.objects.all())
-    phoneNumber = PhoneNumberField(allow_null=True, required=False)
+    phoneNumber = PhoneNumberField(
+        allow_null=True, required=False)
     Email = serializers.EmailField(allow_null=True, required=False)
 
     class Meta:
-        model = UserInfoModel
+        model = UserInformationModel
         fields = ('user', 'phoneNumber', 'Email')
 
     def create(self, validated_data):
-        UserInfoModel.objects.create(
+        userInfoInstance = UserInformationModel.objects.create(
             user=validated_data["user"],
             phoneNumber=validated_data.setdefault("phoneNumber", None),
             Email=validated_data.setdefault("Email", None),
         )
-        return super().create(validated_data)
+        return userInfoInstance
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):

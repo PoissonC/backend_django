@@ -31,8 +31,9 @@ authentication
 @api_test
 def signup() -> requests.Response:
     payload = json.dumps({
-        "username": "Daniel",
+        "username": "daniel0321forever",
         "email": "daniel.bb0321@gmail.com",
+        "phoneNumber": "+886 0987457321",
         "password": "pwd",
     })
 
@@ -50,7 +51,7 @@ def signup() -> requests.Response:
 @api_test
 def login() -> requests.Response:
     payload = json.dumps({
-        "username": "Daniel",
+        "username": "daniel0321forever",
         "password": "pwd",
     })
 
@@ -553,9 +554,9 @@ def update_on_off():
 
 
 if __name__ == '__main__':
-    # create_greenhouse()
+    create_greenhouse()
     # create_real_sensor()
-    create_controller()
+    # create_controller()
     # create_controller_and_rSensor()
 
     # get_greenhouse()

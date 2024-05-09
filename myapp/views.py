@@ -92,6 +92,7 @@ class SignupAPIView(APIView):
             })
 
             if not serializer.is_valid():
+                print(serializer.errors)
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             user = serializer.save()  # The user is created and saved here
@@ -105,13 +106,10 @@ class SignupAPIView(APIView):
 
             if not userInfoSer.is_valid():
                 user.delete()
+                print(serializer.errors)
                 return Response(userInfoSer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            UserInfoModel.objects.create(
-                user=user,
-                Email=request.data.setdefault("email", None),
-                phoneNumber=request.data.setdefault("phoneNumber", None),)
-            # userInfoSer.save()
+            userInfoSer.save()
 
             token = Token.objects.get(user=user)
 
@@ -142,7 +140,7 @@ class LoginAPIView(APIView):
             token = Token.objects.create(user=user)
 
             # return user information
-            userInfo = UserInfoModel.objects.get(user=user)
+            userInfo = UserInformationModel.objects.get(user=user)
             userInfoData = UserInforSerializer(userInfo).data
 
             return Response({"token": token.key, "user": userInfoData}, status=status.HTTP_200_OK)
