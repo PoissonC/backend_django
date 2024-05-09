@@ -13,16 +13,126 @@ from .api_base import *
 
 """
 TODO:
-1. use parent class to separate app and greenhouse api
-2. use url parameter for every api for getting information
+a2. implement websocket on getting controller update
 """
+
+
+class GreenhouseAPI(RealSensorBaseAPI, ControllerBaseAPI):
+    """ Initializing all greenhouse objects """
+
+    def post(self, request, greenhouseUID):
+        """
+        Create real sensor item when the creattion request is sent from the sensor. The current value would start to be recoreded at the moment
+
+        - method: POST
+        - authentication: "Authorization": "Token <token>"
+        #### Return format example
+        {
+            "message": "item created",
+            "realSensorUID": "123456",
+        }
+
+        #### Post format example
+        {
+            "realSensors": {
+                "AirSensor_1": {
+                    "greenhouseUID": "1234",
+                    "realSensorID": "AirSensor",
+                    "electricity": 4.12,
+                    "address":
+                    {
+                        "lat": 24.112,
+                        "lng": 47.330
+                    },
+                    "sensors":
+                    {
+                        "airTemp": 33,
+                        "airHumidity": 68,
+                        "timeStamp": "2024-04-18 17:04:04"
+                    }
+                },
+            },
+            "controllers": {
+                "evalve_1": {
+                    "greenhouseUID": "aeprjsdlknafln",
+                    "controllerKey": "evalve",
+                    "electricity": 100,
+                    "lat": 24.112,
+                    "lng": 47.330,
+                    "setting": {
+                        "on": False,
+                        "manualControl": False,
+                        "timestamp": "2024-04-03 17:04:04",
+                        "evalveSchedules": [
+                            {"cutHumidity": 30, "duration": 15, "startTime": "15:00"},
+                            {"cutHumidity": 30, "duration": 15, "startTime": "16:00"},
+                        ],
+                    }
+                },
+                "fan_1": {
+                    "greenhouseUID": "oerahjdfjnjn;dbfa",
+                    "controllerKey": "fan",
+                    "electricity": 100,
+                    "lat": 24.112,
+                    "lng": 47.330,
+                    "setting": {
+                        "on": False,
+                        "manualControl": False,
+                        "timestamp": "2024-04-03 17:04:04",
+                        "openTemp": 21,
+                        "closeTemp": 20,
+                    }
+
+                }
+            }
+        }
+
+
+        """
+
+        try:
+            realSensorDatas = self.parseRealSensorFormat(
+                request.data["realSensors"], greenhouseUID=greenhouseUID)
+
+            controllerDatas = self.parseControllerFormat(
+                request.data["controllers"], greenhouseUID=greenhouseUID)
+
+            print("realSensor data", realSensorDatas)
+            print("controller datas", controllerDatas)
+
+            # validate
+            rSensorSer = RealSensorSerializer(data=realSensorDatas, many=True)
+            controllerSer = ControllerSerializer(
+                data=controllerDatas, many=True)
+
+            if not rSensorSer.is_valid():
+                raise ValidationError(rSensorSer.errors)
+
+            if not controllerSer.is_valid():
+                raise ValidationError(controllerSer.errors)
+
+            rSensorSer.save()
+            controllerSer.save()
+
+            return Response({"message": "item created"}, status=status.HTTP_200_OK)
+
+        except RealSensorModel.DoesNotExist as e:
+            print(f"real sensor not found")
+            return Response({"error": "real sensor not foound"})
+
+        except GreenhouseModel.DoesNotExist as e:
+            print(f"Greenhouse does not exist")
+            return Response({"message": "Parent greenhouse not found"}, status=status.HTTP_404_NOT_FOUND)
+        except ValidationError as e:
+            print(e.detail)
+            return Response({"message": e.detail}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class RealSensorAPI(RealSensorBaseAPI):
 
     def post(self, request, greenhouseUID):
         """
-        Create real sensor item when the creattion request is sent from the sensor. The current value would start to be recoreded at the moment
+        Create real sensor item when the creation request is sent from the sensor. The current value would start to be recoreded at the moment
 
         - method: POST
         - authentication: "Authorization": "Token <token>"
@@ -55,15 +165,14 @@ class RealSensorAPI(RealSensorBaseAPI):
         """
 
         try:
-            data = self.parseRealSensorFormat(
+            rSensorDatas = self.parseRealSensorFormat(
                 request.data, greenhouseUID=greenhouseUID)
-            for realSensorID, rSensorData in data.items():
-                rSensorSer = RealSensorSerializer(data=rSensorData)
+            rSensorSer = RealSensorSerializer(data=rSensorDatas, many=True)
 
-                if not rSensorSer.is_valid():
-                    raise ValidationError(rSensorSer.errors)
+            if not rSensorSer.is_valid():
+                raise ValidationError(rSensorSer.errors)
 
-                rSensorSer.save()
+            rSensorSer.save()
 
             return Response({"message": "item created"}, status=status.HTTP_200_OK)
 
@@ -80,10 +189,7 @@ class RealSensorAPI(RealSensorBaseAPI):
 
     def put(self, request, greenhouseUID):
         """
-        Update the corresponding sensor data from the request object
-
-        - method: POST
-        - update: update the corresponding data field in database
+        Update the corresponding sensor value from the request object
 
         #### Request format
         ```
@@ -111,19 +217,21 @@ class RealSensorAPI(RealSensorBaseAPI):
             data = self.parseRealSensorFormat(
                 request.data, greenhouseUID=greenhouseUID)
 
-            notFound = []
-            for realSensorID, realSensorData in data.items():
+            sensorDatas = []
+            for realSensorData in data:
                 for sensorKey, sensorValueData in realSensorData["sensors"].items():
-                    sensorValueSer = SensorValueHistorySerializer(
-                        data=sensorValueData)
+                    sensorDatas.append(sensorValueData)
 
-                    # validate
-                    if not sensorValueSer.is_valid():
-                        raise ValidationError(sensorValueSer.errors)
+            sensorValueSer = SensorValueHistorySerializer(
+                data=sensorDatas, many=True)
 
-                    sensorValueSer.save()
+            # validate
+            if not sensorValueSer.is_valid():
+                raise ValidationError(sensorValueSer.errors)
 
-            return Response({"message": "sensor history updated", "notFound": notFound}, status=status.HTTP_200_OK)
+            sensorValueSer.save()
+
+            return Response({"message": "sensor history updated"}, status=status.HTTP_200_OK)
 
         except RealSensorModel.DoesNotExist as e:
             print(f"real sensor not found", e)
@@ -154,8 +262,8 @@ class ControllerAPI(ControllerBaseAPI):
         #### Post format example
         ```
         {
-            "evalve_1": {
-                "greenhouseUID": "aeprjsdlknafln",
+            "evalve_3": {
+                "greenhouseUID": sample_greenhouse_uid,
                 "controllerKey": "evalve",
                 "electricity": 100,
                 "lat": 24.112,
@@ -164,15 +272,16 @@ class ControllerAPI(ControllerBaseAPI):
                     "on": False,
                     "manualControl": False,
                     "timestamp": "2024-04-03 17:04:04",
+                    "cutHumidity": 30,
                     "evalveSchedules": [
-                        {"cutHumidity": 30, "duration": 15, "startTime": "15:00"},
-                        {"cutHumidity": 30, "duration": 15, "startTime": "16:00"},
+                           {"duration": 15, "startTime": "15:00"},
+                           {"duration": 15, "startTime": "16:00"},
                     ],
                 }
             },
-            "Fan_1": {
-                "greenhouseUID": "oerahjdfjnjn;dbfa",
-                "controllerKey": "evalve",
+            "fan_3": {
+                "greenhouseUID": sample_greenhouse_uid,
+                "controllerKey": "fan",
                 "electricity": 100,
                 "lat": 24.112,
                 "lng": 47.330,
@@ -210,6 +319,71 @@ class ControllerAPI(ControllerBaseAPI):
             print(e)
             return Response({"message": e.detail}, status=status.HTTP_400_BAD_REQUEST)
 
+    def put(self, req, greenhouseUID):
+        """
+        Update the corresponding controller on/off state
+
+        - method: POST
+        - update: update the corresponding data field in database
+
+        #### Request format
+        ```
+        {
+            "evalve_0": {
+                "controllerID": "evalve_0", 
+                "setting": {
+                    "on": False,
+                    "manualControl": False,
+                    "timestamp": "2024-04-03 17:04:04",
+                    "evalveSchedules": [
+                        {"cutHumidity": 30, "duration": 15, "startTime": "15:00"},
+                        {"cutHumidity": 30, "duration": 15, "startTime": "16:00"},
+                    ],
+                }
+            },
+            "fan_0": {
+                "controllerID": "fan_0", 
+                "setting": {
+                    "on": False,
+                    "manualControl": False,
+                    "timestamp": "2024-04-03 17:04:04",
+                    "openTemp": 21,
+                    "closeTemp": 20,
+                }
+            },
+        }
+
+        ```
+        """
+        try:
+            greenhouse = GreenhouseModel.objects.get(
+                greenhouseUID=greenhouseUID)
+
+            settingDataList = []
+            for controllerID, controllerData in req.data.items():
+                controller = ControllerModel.objects.get(
+                    greenhouse=greenhouse, controllerID=controllerID)
+                controllerData["controller"] = controller.id
+
+                settingDataList.append(controllerData)
+
+            ser = ControllerSettingSerializer(data=settingDataList, many=True)
+
+            if not ser.is_valid():
+                print(ser.errors)
+                return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            ser.save()
+            return Response({"message": "controller updated"}, status=status.HTTP_200_OK)
+
+        except GreenhouseModel.DoesNotExist:
+            print("greenhouse uid:", greenhouseUID)
+            return Response({"message": "greenhouse not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        except ControllerModel.DoesNotExist:
+            print(f"controllerID {controllerID} not found")
+            return Response({"message": f"controllerID {controllerID} not found"}, status=status.HTTP_404_NOT_FOUND)
+
     def get(self, request, greenhouseUID):
         """
         Return the setting of the specified controllers
@@ -221,21 +395,35 @@ class ControllerAPI(ControllerBaseAPI):
         ### Return data format
         ```
         {
-            "evalve_0": {
-                "openTemp": 31.2, # ignored if not used
-                "closeTemp": 30.1, # ignored if not used
-                "evalveSchedules": [ # ignored if not used
-                    {"cutHumidity": 24.1, "duration": 15, "startTime": "15:00"},
-                    {"cutHumidity": 24.3, "duration": 15, "startTime": "12:00"}
-                ]
+            "evalve_3": {
+                "controllerKey": "evalve",
+                "electricity": 100,
+                "lat": 24.112,
+                "lng": 47.330,
+                "setting": {
+                    "on": False,
+                    "manualControl": False,
+                    "timestamp": "2024-04-03 17:04:04",
+                    "cutHumidity": 30,
+                    "evalveSchedules": [
+                           {"duration": 15, "startTime": "15:00"},
+                           {"duration": 15, "startTime": "16:00"},
+                    ],
+                }
             },
-            "fan_1": {
-                "openTemp": 31.2, # ignored if not used
-                "closeTemp": 30.1, # ignored if not used
-                "evalveSchedules": [ # ignored if not used
-                    {"cutHumidity": 24.1, "duration": 15, "startTime": "15:00"},
-                    {"cutHumidity": 24.3, "duration": 15, "startTime": "12:00"}
-                ]
+            "fan_3": {
+                "controllerKey": "fan",
+                "electricity": 100,
+                "lat": 24.112,
+                "lng": 47.330,
+                "setting": {
+                    "on": False,
+                    "manualControl": False,
+                    "timestamp": "2024-04-03 17:04:04",
+                    "openTemp": 21,
+                    "closeTemp": 20,
+                }
+
             }
         }
         ```
@@ -249,11 +437,7 @@ class ControllerAPI(ControllerBaseAPI):
                 greenhouse=greenhouse
             ))
 
-            controllerData = {}
-            for controller in allControllers:
-                controllerSer = ControllerSerializer(controller)
-                controllerData[controllerSer.data["controllerID"]
-                               ] = controllerSer.data["setting"]
+            controllerData = self.parseToControllerFormat(allControllers)
 
             return Response(controllerData, status=status.HTTP_200_OK)
 

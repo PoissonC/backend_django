@@ -1,8 +1,51 @@
 {
-  "token": "6ce597cab0856bcfb058f8ad196e352abb97ed73",
-  "user": {
-    "user": 5,
-    "phoneNumber": null,
-    "Email": "daniel.bb0321@gmail.com"
+  "evalve_3": {
+    "controllerKey": "evalve",
+    "electricity": 100.0,
+    "setting": {
+      "controller": 9,
+      "openTemp": null,
+      "closeTemp": null,
+      "evalveSchedules": [
+        {
+          "duration": "00:00:15",
+          "controllerSetting": 15,
+          "startTime": "15:00:00"
+        },
+        {
+          "duration": "00:00:15",
+          "controllerSetting": 15,
+          "startTime": "16:00:00"
+        }
+      ],
+      "timestamp": "2024-04-03T17:04:04Z",
+      "isCurrent": true,
+      "on": false,
+      "manualControl": false,
+      "cutHumidity": 30.0
+    },
+    "address": {
+      "lat": 24.112,
+      "lng": 47.33
+    }
+  },
+  "fan_3": {
+    "controllerKey": "fan",
+    "electricity": 100.0,
+    "setting": {
+      "controller": 10,
+      "openTemp": 21.0,
+      "closeTemp": 20.0,
+      "evalveSchedules": [],
+      "timestamp": "2024-04-03T17:04:04Z",
+      "isCurrent": true,
+      "on": false,
+      "manualControl": false,
+      "cutHumidity": null
+    },
+    "address": {
+      "lat": 24.112,
+      "lng": 47.33
+    }
   }
 }

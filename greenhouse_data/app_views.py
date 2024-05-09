@@ -7,9 +7,6 @@ from .models import *
 from .serializer import *
 from .api_base import *
 
-# TODO: add update greenhouse api
-# TODO: add get user information api
-
 
 class Greenhouse(GetGreenhouseBase):
     """
@@ -254,8 +251,9 @@ class Greenhouse(GetGreenhouseBase):
 class GreenhouseDetail(GetGreenhouseBase):
     """
     API to get, update, or delete a greenhouse
-    # UNDONE: need api for updating greenhouse
     """
+
+    # UNDONE: need api for updating greenhouse
 
     def patch(self, req, greenhouseUID):  # NOTE: new api
         """
@@ -263,9 +261,12 @@ class GreenhouseDetail(GetGreenhouseBase):
         """
 
         try:
+            user = req.user
             payload = req.data
             greenhouse = GreenhouseModel.objects.get(
                 greenhouseUID=greenhouseUID)
+
+            self.checkGreenhouseOwner(greenhouse, user)
 
             ser = GreenhouseSerializer(greenhouse, data=payload, partial=True)
             if ser.is_valid():
@@ -282,6 +283,9 @@ class GreenhouseDetail(GetGreenhouseBase):
         except GreenhouseModel.DoesNotExist:
             print("greenhouse not found")
             return Response("greenhouse not found", status=status.HTTP_404_NOT_FOUND)
+        except PermissionError as e:
+            print("validation errors", e)
+            return Response({"error": "you don't have the access to the greenhouse"}, status=status.HTTP_401_UNAUTHORIZED)
 
     def delete(self, request, greenhouseUID):
         """

@@ -19,4 +19,6 @@ urlpatterns = [
          greenhouse_views.ControllerAPI.as_view()),
     path('gh/real-sensor/<greenhouseUID>',
          greenhouse_views.RealSensorAPI.as_view()),
+    path('gh/greenhouse/<greenhouseUID>',
+         greenhouse_views.GreenhouseAPI.as_view())
 ]

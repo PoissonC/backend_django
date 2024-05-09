@@ -2,7 +2,7 @@ import requests
 import json
 import datetime
 
-sample_greenhouse_uid = "cb91a232-d989-487b-970d-ae717352281b"
+sample_greenhouse_uid = "4e8c45bc-96e6-417b-8076-271d61da0731"
 host = "127.0.0.1:8000"
 # host = "123.193.99.66:9000"
 
@@ -31,7 +31,7 @@ authentication
 @api_test
 def signup() -> requests.Response:
     payload = json.dumps({
-        "username": "daniel",
+        "username": "Daniel",
         "email": "daniel.bb0321@gmail.com",
         "password": "pwd",
     })
@@ -50,7 +50,7 @@ def signup() -> requests.Response:
 @api_test
 def login() -> requests.Response:
     payload = json.dumps({
-        "username": "daniel",
+        "username": "Daniel",
         "password": "pwd",
     })
 
@@ -86,75 +86,6 @@ def create_greenhouse() -> requests.Response:
             "name": "GH2",
             "address": "Taipei, Taiwan",
             "beginDate": "2011-03-21",
-            "realSensors": {
-                "AirSensor_0": {
-                    "electricity": 97,
-                    "realSensorKey": "AirSensor",
-                    "lat": 24.112,
-                    "lng": 47.330,
-                    "sensors": {
-                        "airHumidity": {"value": 22, "timestamp": "2024-04-03 17:04:04"},
-                        "airTemp": {"value": 31, "timestamp": "2024-04-03 17:04:04"},
-                    }
-                },
-                "AirSensor_1": {
-                    "electricity": 100,
-                    "realSensorKey": "AirSensor",
-                    "lat": 24.112,
-                    "lng": 47.330,
-                    "sensors": {
-                        "airHumidity": {"value": 22, "timestamp": "2024-04-03 17:04:04"},
-                        "airTemp": {"value": 31, "timestamp": "2024-04-03 17:04:04"},
-                    }
-                }
-            },
-            "controllers": {
-                "evalve_0": {
-                    "controllerKey": "evalve",
-                    "electricity": 100,
-                    "lat": 24.112,
-                    "lng": 47.330,
-                    "setting": {
-                        "on": True,
-                        "manualControl": False,
-                        "cutHumidity": 30,
-                        "evalveSchedules": [
-                            {"duration": 15, "startTime": "15:00"},
-                            {"duration": 15, "startTime": "16:00"},
-                        ],
-                        "timestamp":  "2024-04-03 17:04:04",
-                    },
-
-                },
-                "shade_0": {
-                    "controllerKey": "shade",
-                    "electricity": 100,
-                    "lat": 24.112,
-                    "lng": 47.330,
-                    "setting": {
-                        "on": True,
-                        "manualControl": False,
-                        "openTemp": 21,
-                        "closeTemp": 20,
-                        "timestamp": "2024-04-03 17:04:04",
-
-                    },
-                },
-                "fan_0": {
-                    "controllerKey": "fan",
-                    "electricity": 100,
-                    "lat": 24.112,
-                    "lng": 47.330,
-                    "setting": {
-                        "on": True,
-                        "manualControl": False,
-                        "openTemp": 21,
-                        "closeTemp": 20,
-                        "timestamp": "2024-04-03 17:04:04",
-
-                    },
-                }
-            }
         }
     )
 
@@ -245,6 +176,75 @@ def create_controller() -> requests.Response:
 
     return requests.post(
         url=f"http://{host}/gh/controller/{sample_greenhouse_uid}",
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Token {token}",
+        },
+        data=payload,
+    )
+
+
+@api_test
+def create_controller_and_rSensor():
+    payload = json.dumps(
+        {
+            "controllers": {
+                "evalve_3": {
+                    "greenhouseUID": sample_greenhouse_uid,
+                    "controllerKey": "evalve",
+                    "electricity": 100,
+                    "lat": 24.112,
+                    "lng": 47.330,
+                    "setting": {
+                        "on": False,
+                        "manualControl": False,
+                        "timestamp": "2024-04-03 17:04:04",
+                        "cutHumidity": 30,
+                        "evalveSchedules": [
+                            {"duration": 15, "startTime": "15:00"},
+                            {"duration": 15, "startTime": "16:00"},
+                        ],
+                    }
+                },
+                "fan_3": {
+                    "greenhouseUID": sample_greenhouse_uid,
+                    "controllerKey": "fan",
+                    "electricity": 100,
+                    "lat": 24.112,
+                    "lng": 47.330,
+                    "setting": {
+                        "on": False,
+                        "manualControl": False,
+                        "timestamp": "2024-04-03 17:04:04",
+                        "openTemp": 21,
+                        "closeTemp": 20,
+                    }
+
+                }
+            },
+            "realSensors": {
+                "AirSensor_4": {
+                    "greenhouseUID": sample_greenhouse_uid,
+                    "realSensorKey": "AirSensor",
+                    "electricity": 4.12,
+                    "address":
+                        {
+                            "lat": 24.112,
+                            "lng": 47.330
+                        },
+                    "sensors":
+                        {
+                            "airTemp": 20.1,
+                            "airHumidity": 68.9,
+                            "timestamp": "2024-04-18 17:04:04"
+                        }
+                },
+            }
+        }
+    )
+
+    return requests.post(
+        url=f"http://{host}/gh/greenhouse/{sample_greenhouse_uid}",
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Token {token}",
@@ -391,6 +391,25 @@ greenhouse updater
 
 
 @api_test
+def update_greenhouse():
+    payload = json.dumps({
+        "name": "GGHH",
+        "address": "Yilan, Taiwan",
+    })
+
+    res = requests.patch(
+        url=f"http://{host}/app/greenhouse/{sample_greenhouse_uid}",
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Token {token}",
+        },
+        data=payload,
+    )
+
+    return res
+
+
+@api_test
 def update_controller_info():
     payload = json.dumps(
         {
@@ -500,19 +519,51 @@ def update_sensor_data():
     return res
 
 
+@api_test
+def update_on_off():
+    payload = json.dumps(
+        {
+            "evalve_3": {
+                "on": False,
+                "manualControl": False,
+                "timestamp": "2024-04-03 17:04:04",
+                "cutHumidity": 30,
+                "evalveSchedules": [
+                    {"duration": 15, "startTime": "15:00"},
+                    {"duration": 15, "startTime": "16:00"},
+                ],
+            },
+        }
+    )
+
+    res = requests.put(
+        url=f"http://{host}/gh/controller/{sample_greenhouse_uid}",
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Token {token}",
+        },
+        data=payload,
+    )
+
+    return res
+
+
 if __name__ == '__main__':
     # create_greenhouse()
     # create_real_sensor()
     # create_controller()
+    # create_controller_and_rSensor()
 
     # get_greenhouse()
     # get_one_greenhouse()
     # get_controller_to_app()
-    # get_controller_to_gre()
+    get_controller_to_gre()
     # get_sensor_history()
 
     # update_controller_info()
     # update_controller_setting()
     # update_sensor_info()
     # update_sensor_data()
+    # update_greenhouse()
+    # update_on_off()
     pass

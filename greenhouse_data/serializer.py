@@ -108,11 +108,10 @@ class SensorSerializer(serializers.ModelSerializer):
         model = SensorModel
         fields = '__all__'
 
-    def getClosestHour(self, timestamp: str):
-        time = datetime.datetime.fromisoformat(timestamp)
-        roundedTime = time.replace(
-            second=0, microsecond=0, minute=0, hour=time.hour)
-        +timedelta(hours=time.minute//30)
+    def getClosestHour(self, timestamp):
+        roundedTime = timestamp.replace(
+            second=0, microsecond=0, minute=0, hour=timestamp.hour)
+        +timedelta(hours=timestamp.minute//30)
 
         return roundedTime.isoformat()
 
@@ -637,7 +636,37 @@ class GreenhouseSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def update(self, instance, validated_data):
-        return super().update(instance, validated_data)
+        if validated_data.setdefault("realSensors", None):
+            raise ValidationError(
+                {"can not update real sensors data in the API"})
+
+        if validated_data.setdefault("controllers", None):
+            raise ValidationError(
+                {"can not update controllers data in the API"})
+
+        info = model_meta.get_field_info(instance)
+
+        # Simply set each attribute on the instance, and then save it.
+        # Note that unlike `.create()` we don't need to treat many-to-many
+        # relationships as being a special case. During updates we already
+        # have an instance pk for the relationships to be associated with.
+        m2m_fields = []
+        for attr, value in validated_data.items():
+            if attr in info.relations and info.relations[attr].to_many:
+                m2m_fields.append((attr, value))
+            else:
+                setattr(instance, attr, value)
+
+        instance.save()
+
+        # Note that many-to-many fields are set after updating instance.
+        # Setting m2m fields triggers signals which could potentially change
+        # updated instance and we do not want it to collide with .update()
+        for attr, value in m2m_fields:
+            field = getattr(instance, attr)
+            field.set(value)
+
+        return instance
 
     def run_validation(self, data=...):
         try:

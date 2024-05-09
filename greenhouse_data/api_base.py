@@ -24,6 +24,13 @@ class AppBaseAPI(APIView):
     """
     permission_classes = [IsAuthenticated]
 
+    def checkGreenhouseOwner(self, greenhouse, user):
+        print("greenhouse owner", greenhouse.owner)
+        print("user", user)
+
+        if greenhouse.owner != user:
+            raise PermissionError()
+
 
 class GetGreenhouseBase(AppBaseAPI):
     """
@@ -106,6 +113,8 @@ class RealSensorBaseAPI(GreenhouseBaseAPI):
 
     def parseRealSensorFormat(self, data: dict, greenhouseUID: str):
 
+        rSensorList = []
+
         try:
             for rID, rData in data.items():
 
@@ -130,6 +139,8 @@ class RealSensorBaseAPI(GreenhouseBaseAPI):
                 rData["sensors"] = self.parseSensorFormat(
                     rData["sensors"], realSensor)
 
+                rSensorList.append(rData)
+
         except AssertionError as e:
             print("address not provided")
             raise ValidationError(
@@ -142,15 +153,48 @@ class RealSensorBaseAPI(GreenhouseBaseAPI):
             print(e)
             raise ValidationError(detail={"error parsing request body"})
 
-        return data
+        return rSensorList
 
 
 class ControllerBaseAPI(GreenhouseBaseAPI):
+    def popControllerElement(self, controllerData: dict):
+        for key in ["greenhouseUID", "controllerID", "itemName"]:
+            controllerData.pop(key, None)
+
+        return controllerData
+
+    def popSettingElement(self, controllerData: dict):
+        controllerData.setdefault("setting", {}).pop("id", None)
+        for sched in controllerData["setting"].setdefault(
+                "evalveSchedules", {}):
+            sched.pop("id", None)
+
+        return controllerData
+
+    def parseToControllerFormat(self, controllers):
+
+        controllerData = {}
+        for controller in controllers:
+            controllerSer = ControllerSerializer(controller)
+            unparsedData = controllerSer.data
+            unparsedData["address"] = {
+                "lat": unparsedData.pop("lat", None),
+                "lng": unparsedData.pop("lng", None),
+            }
+            unparsedData = self.popControllerElement(unparsedData)
+            unparsedData = self.popSettingElement(unparsedData)
+
+            controllerData[controllerSer.data["controllerID"]] = unparsedData
+
+        return controllerData
+
     def parseControllerFormat(self, data: dict, greenhouseUID: str):
         try:
             assert isinstance(data, dict)
         except AssertionError as e:
             raise ValidationError(detail={"request data is not a map"})
+
+        controllerList = []
 
         for controllerID, controllerData in data.items():
             try:
@@ -163,6 +207,8 @@ class ControllerBaseAPI(GreenhouseBaseAPI):
                 controllerData["controllerID"] = controllerID
                 controllerData["greenhouse"] = greenhouseUID
 
+                controllerList.append(controllerData)
+
             except AssertionError as e:
                 raise ValidationError(detail={"controller data is not a map"})
 
@@ -170,4 +216,4 @@ class ControllerBaseAPI(GreenhouseBaseAPI):
                 print(e)
                 raise ValidationError(detail={e})
 
-        return data
+        return controllerList
