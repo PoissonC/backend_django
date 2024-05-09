@@ -322,10 +322,7 @@ class ControllerAPI(ControllerBaseAPI):
 
     def put(self, req, greenhouseUID):
         """
-        Update the corresponding controller on/off state
-
-        - method: POST
-        - update: update the corresponding data field in database
+        Update the corresponding controller on/off state and electricity
 
         #### Request format
         ```
@@ -364,16 +361,36 @@ class ControllerAPI(ControllerBaseAPI):
             for controllerID, controllerData in req.data.items():
                 controller = ControllerModel.objects.get(
                     greenhouse=greenhouse, controllerID=controllerID)
-                controllerData["controller"] = controller.id
+                settingData = controllerData.pop("setting", None)
 
-                settingDataList.append(controllerData)
+                if not settingData:
+                    print("setting data not found")
+                    return Response({"error": "setting field is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-            ser = ControllerSettingSerializer(data=settingDataList, many=True)
+                settingData["controller"] = controller.id
+
+                settingDataList.append(settingData)
+
+                controllerData["greenhouse"] = greenhouse.greenhouseUID
+                controllerData["controllerID"] = controllerID
+
+                controllerSer = ControllerSerializer(
+                    controller, data=controllerData, partial=True)
+
+                if controllerSer.is_valid():
+                    controllerSer.save()
+
+            ser = ControllerSettingSerializer(
+                data=settingDataList, many=True)
+            if not controllerSer.is_valid():
+                print("invalid controller data", controllerSer.errors)
+                return Response(controllerSer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             if not ser.is_valid():
-                print(ser.errors)
+                print("invalid setting data", ser.errors)
                 return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
 
+            controllerSer.save()
             ser.save()
             return Response({"message": "controller updated"}, status=status.HTTP_200_OK)
 

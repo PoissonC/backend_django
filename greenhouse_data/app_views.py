@@ -497,6 +497,9 @@ class RealSensorAPI(AppBaseAPI):
         except GreenhouseModel.DoesNotExist:
             print(f"greenhouse {greenhouseUID} not found")
             return Response({"message": "greenhouse not found"}, status=status.HTTP_404_NOT_FOUND)
+        except RealSensorModel.DoesNotExist:
+            print(f"realsensor {realSensorID} not found")
+            return Response({"error": f"realSensor {realSensorID} not found"}, status=status.HTTP_404_NOT_FOUND)
         except ControllerModel.DoesNotExist:
             print(f"realSensorID: {realSensorID} no found")
             return Response({"errors": f"realSensorID: {realSensorID} no found"}, status=status.HTTP_404_NOT_FOUND)

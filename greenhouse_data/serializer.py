@@ -474,8 +474,8 @@ class ControllerSerializer(serializers.ModelSerializer):
         }
         # validate id
         containedID = list(map(lambda x: x.controllerID, ControllerModel.objects.filter(
-            greenhouse=validated_data["greenhouse"])))
-        if validated_data["controllerID"] in containedID:
+            greenhouse=validated_data.setdefault("greenhouse", None))))
+        if validated_data.setdefault("controllerID", None) in containedID:
             raise serializers.ValidationError(
                 {f"controllerID {validated_data['controllerID']} existed in the greenhouse"})
 

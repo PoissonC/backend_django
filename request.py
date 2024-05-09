@@ -2,8 +2,10 @@ import requests
 import json
 import datetime
 
-sample_greenhouse_uid = "4e8c45bc-96e6-417b-8076-271d61da0731"
+sample_greenhouse_uid = "86949e14-ecb2-4072-bae2-533fbace6a7f"
 host = "127.0.0.1:8000"
+testing_controller_id = "evalve_3"
+testing_realSensor_id = "AirSensor_4"
 # host = "123.193.99.66:9000"
 
 
@@ -106,7 +108,7 @@ def create_greenhouse() -> requests.Response:
 def create_real_sensor() -> requests.Response:
     payload = json.dumps(
         {
-            "AirSensor_4": {
+            testing_realSensor_id: {
                 "greenhouseUID": sample_greenhouse_uid,
                 "realSensorKey": "AirSensor",
                 "electricity": 4.12,
@@ -140,7 +142,7 @@ def create_real_sensor() -> requests.Response:
 def create_controller() -> requests.Response:
     payload = json.dumps(
         {
-            "evalve_2": {
+            testing_controller_id: {
                 "greenhouseUID": sample_greenhouse_uid,
                 "controllerKey": "evalve",
                 "electricity": 100,
@@ -194,7 +196,7 @@ def create_controller_and_rSensor():
     payload = json.dumps(
         {
             "controllers": {
-                "evalve_3": {
+                testing_controller_id: {
                     "greenhouseUID": sample_greenhouse_uid,
                     "controllerKey": "evalve",
                     "electricity": 100,
@@ -228,7 +230,7 @@ def create_controller_and_rSensor():
                 }
             },
             "realSensors": {
-                "AirSensor_4": {
+                testing_realSensor_id: {
                     "greenhouseUID": sample_greenhouse_uid,
                     "realSensorKey": "AirSensor",
                     "electricity": 4.12,
@@ -356,7 +358,7 @@ def delete_greenhouse():
 def delete_real_sensor():
     payload = json.dumps({
         "greenhouseUID": sample_greenhouse_uid,
-        "realSensorID": "AirSensor_1",
+        "realSensorID": testing_realSensor_id,
     })
 
     res = requests.delete(
@@ -375,7 +377,7 @@ def delete_real_sensor():
 def delete_controller():
     payload = json.dumps({
         "greenhouseUID": sample_greenhouse_uid,
-        "controllerID": "evalve_1",
+        "controllerID": "evalve_4",
     })
 
     res = requests.delete(
@@ -425,7 +427,7 @@ def update_controller_info():
     )
 
     res = requests.patch(
-        url=f"http://{host}/app/controller/{sample_greenhouse_uid}/Watering_0",
+        url=f"http://{host}/app/controller/{sample_greenhouse_uid}/{testing_controller_id}",
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Token {token}",
@@ -441,14 +443,14 @@ def update_controller_setting():
     payload = json.dumps(
         [
             {
-                "controllerID": "Watering_0",
+                "controllerID": testing_controller_id,
                 "setting": {
                     "on": True,
                     "manualControl": False,
                     "timestamp": "2024-04-03 17:04:04",
                     "cutHumidity": 21.3,
                     "evalveSchedules": [
-                                {"duration": 12, "startTime": "15:00"},
+                        {"duration": 12, "startTime": "15:00"},
                     ]
                 }
             },
@@ -470,15 +472,11 @@ def update_controller_setting():
 @api_test
 def update_sensor_info():
     payload = json.dumps(
-        {
-            # fields to be changed
-            "lat": 32.1,  # optional
-            "lng": 18.3,  # optional
-        }
+
     )
 
     res = requests.patch(
-        url=f"http://{host}/app/realSensor/{sample_greenhouse_uid}/AirSensor_1",
+        url=f"http://{host}/app/real-sensor/{sample_greenhouse_uid}/{testing_realSensor_id}",
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Token {token}",
@@ -492,24 +490,7 @@ def update_sensor_info():
 @api_test
 def update_sensor_data():
     payload = json.dumps(
-        {
-            "AirSensor_1": {
-                "greenhouseUID": sample_greenhouse_uid,
-                "realSensorKey": "AirSensor",
-                "electricity": 4.12,
-                "address":
-                {
-                    "lat": 24.112,
-                    "lng": 47.330
-                },
-                "sensors":
-                {
-                    "airTemp": 33,
-                    "airHumidity": 68,
-                    "timestamp": "2024-04-18 17:04:04"
-                }
-            },
-        }
+
     )
 
     res = requests.put(
@@ -528,15 +509,23 @@ def update_sensor_data():
 def update_on_off():
     payload = json.dumps(
         {
-            "evalve_3": {
-                "on": False,
-                "manualControl": False,
-                "timestamp": "2024-04-03 17:04:04",
-                "cutHumidity": 30,
-                "evalveSchedules": [
-                    {"duration": 15, "startTime": "15:00"},
-                    {"duration": 15, "startTime": "16:00"},
-                ],
+            testing_controller_id: {
+                "electricity": 100,
+                "address": {
+                    "lat": None,
+                    "lng": None,
+                },
+                "setting": {
+                    "on": False,
+                    "manualControl": False,
+                    "timestamp": "2024-04-03 17:04:04",
+                    "cutHumidity": 30,
+                    "evalveSchedules": [
+                        {"duration": 15, "startTime": "15:00"},
+                        {"duration": 15, "startTime": "16:00"},
+                    ],
+                }
+
             },
         }
     )
@@ -554,7 +543,7 @@ def update_on_off():
 
 
 if __name__ == '__main__':
-    create_greenhouse()
+    # create_greenhouse()
     # create_real_sensor()
     # create_controller()
     # create_controller_and_rSensor()
@@ -570,5 +559,5 @@ if __name__ == '__main__':
     # update_sensor_info()
     # update_sensor_data()
     # update_greenhouse()
-    # update_on_off()
+    update_on_off()
     pass
