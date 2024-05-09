@@ -299,15 +299,16 @@ class ControllerAPI(ControllerBaseAPI):
         """
         # NOTE: we can try using PrimaryKeyField for greenhouse in serializer, so we only has to input greenhouseUID instead of an instance
         try:
-            data = self.parseControllerFormat(
+            controllerDatas = self.parseControllerFormat(
                 request.data, greenhouseUID=greenhouseUID)
-            for controllerData in data.values():
-                controllerSer = ControllerSerializer(data=controllerData)
 
-                if not controllerSer.is_valid():
-                    raise ValidationError(detail=controllerSer.errors)
+            controllerSer = ControllerSerializer(
+                data=controllerDatas, many=True)
 
-                controllerSer.save()
+            if not controllerSer.is_valid():
+                raise ValidationError(detail=controllerSer.errors)
+
+            controllerSer.save()
 
             return Response({"message": "item created"}, status=status.HTTP_200_OK)
 

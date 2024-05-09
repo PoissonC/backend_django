@@ -42,8 +42,8 @@ class RealSensorModel(models.Model):
     realSensorKey = models.CharField(
         max_length=32)  # The type fo the real sensor
     electricity = models.FloatField(default=100)
-    lat = models.FloatField()
-    lng = models.FloatField()
+    lat = models.FloatField(null=True)
+    lng = models.FloatField(null=True)
 
 
 class SensorModel(models.Model):
@@ -75,8 +75,8 @@ class ControllerModel(models.Model):
     controllerID = models.CharField(max_length=64)
     controllerKey = models.CharField(max_length=32)
     electricity = models.FloatField(default=100)
-    lat = models.FloatField()
-    lng = models.FloatField()
+    lat = models.FloatField(null=True)
+    lng = models.FloatField(null=True)
 
 
 class SensorValueHistoryModel(models.Model):

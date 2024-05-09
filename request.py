@@ -139,12 +139,14 @@ def create_real_sensor() -> requests.Response:
 def create_controller() -> requests.Response:
     payload = json.dumps(
         {
-            "evalve_3": {
+            "evalve_2": {
                 "greenhouseUID": sample_greenhouse_uid,
                 "controllerKey": "evalve",
                 "electricity": 100,
-                "lat": 24.112,
-                "lng": 47.330,
+                "address": {
+                    "lat": None,
+                    "lng": None,
+                },
                 "setting": {
                     "on": False,
                     "manualControl": False,
@@ -156,12 +158,14 @@ def create_controller() -> requests.Response:
                     ],
                 }
             },
-            "fan_3": {
+            "fan_2": {
                 "greenhouseUID": sample_greenhouse_uid,
                 "controllerKey": "fan",
                 "electricity": 100,
-                "lat": 24.112,
-                "lng": 47.330,
+                "address": {
+                    "lat": None,
+                    "lng": None,
+                },
                 "setting": {
                     "on": False,
                     "manualControl": False,
@@ -551,13 +555,13 @@ def update_on_off():
 if __name__ == '__main__':
     # create_greenhouse()
     # create_real_sensor()
-    # create_controller()
+    create_controller()
     # create_controller_and_rSensor()
 
     # get_greenhouse()
     # get_one_greenhouse()
     # get_controller_to_app()
-    get_controller_to_gre()
+    # get_controller_to_gre()
     # get_sensor_history()
 
     # update_controller_info()

@@ -207,6 +207,13 @@ class ControllerBaseAPI(GreenhouseBaseAPI):
                 controllerData["controllerID"] = controllerID
                 controllerData["greenhouse"] = greenhouseUID
 
+                address = controllerData.pop("address", {
+                    "lat": None,
+                    "lng": None,
+                })
+                controllerData["lat"] = address["lat"]
+                controllerData["lng"] = address["lng"]
+
                 controllerList.append(controllerData)
 
             except AssertionError as e:
