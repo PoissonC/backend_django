@@ -44,6 +44,13 @@ class ChangePasswordView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+class ValidatePermission(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(sefl, req):
+        user = req.user
+
+
 class UserSpecificContentView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -133,7 +140,7 @@ class LoginAPIView(APIView):
         user = authenticate(username=username, password=password)
 
         if not username or not password:
-            return Response({"error": "Missing username or password."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"username": "not found"}, status=status.HTTP_403_FORBIDDEN)
         if user:
             # Delete any existing token for the user and create a new one
             Token.objects.filter(user=user).delete()
@@ -146,7 +153,7 @@ class LoginAPIView(APIView):
             return Response({"token": token.key, "user": userInfoData}, status=status.HTTP_200_OK)
         else:
             print("Invalid credential")
-            return Response({"error": "Invalid Credentials"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"password": "invalid"}, status=status.HTTP_400_BAD_REQUEST)
 
 # Home page
 
