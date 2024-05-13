@@ -29,60 +29,6 @@ class Greenhouse(GetGreenhouseBase):
             "name": "test_greenhouse",
             "address": "test_address",
             "beginDate": "2011-03-21",
-            "realSensors": {
-                "AirSensor_1": {
-                    "electricity": 100,
-                    "lat": 24.112,
-                    "lng": 47.330,
-                    "sensors": {
-                        "airHumidity": {"value": 22, "timestamp": "2024-04-03 17:04:04"},
-                        "airTemp": {"value": 31, "timestamp": "2024-04-03 17:04:04"},
-                    }
-                },
-                "AirSensor_2": {
-                    "electricity": 100,
-                    "lat": 24.112,
-                    "lng": 47.330,
-                    "sensors": {
-                        "airHumidity": {"value": 22, "timestamp": "2024-04-03 17:04:04"},
-                        "airTemp": {"value": 31, "timestamp": "2024-04-03 17:04:04"},
-                    }
-                }
-            },
-            "controllers": {
-                "evalve_1": {
-                    "controllerKey": "evalve",
-                    "electricity": 100,
-                    "lat": 24.112,
-                    "lng": 47.330,
-                    "setting": {
-                        "on": True,
-                        "manualControl": False,
-                        "evalveSchedules": [
-                            {"cutHumidity": 30, "duration": 15,
-                                "startTime": "15:00"},
-                            {"cutHumidity": 30, "duration": 15,
-                                "startTime": "16:00"},
-                        ],
-                        "timestamp":  "2024-04-03 17:04:04",
-                    },
-
-                },
-                "Fan_1": {
-                    "controllerKey": "fan",
-                    "electricity": 100,
-                    "lat": 24.112,
-                    "lng": 47.330,
-                    "setting": {
-                        "on": True,
-                        "manualControl": False,
-                        "openTemp": 21,
-                        "closeTemp": 20,
-                        "timestamp": "2024-04-03 17:04:04",
-
-                    },
-                }
-            }
         }
         ```
 
@@ -342,6 +288,9 @@ class Controller(AppControllerBaseAPI):
         except GreenhouseModel.DoesNotExist:
             print("greenhouse does not exist")
             return Response({"error": "greenhouse does not exist"}, status=status.HTTP_404_NOT_FOUND)
+        except PermissionError:
+            print("not permitted to get greenhouse")
+            return Response({"error": "not permitted to get greenhouse"}, status=status.HTTP_403_FORBIDDEN)
 
     def put(self, req, greenhouseUID):
         """
@@ -409,6 +358,9 @@ class Controller(AppControllerBaseAPI):
         except ControllerModel.DoesNotExist:
             print(f"controllerID {controllerData['controllerID']} not found")
             return Response({"message": f"controllerID {controllerData['controllerID']} not found"}, status=status.HTTP_404_NOT_FOUND)
+        except PermissionError:
+            print("not permitted to get greenhouse")
+            return Response({"error": "not permitted to get greenhouse"}, status=status.HTTP_403_FORBIDDEN)
 
 
 class ControllerDetail(AppBaseAPI):
@@ -436,8 +388,11 @@ class ControllerDetail(AppBaseAPI):
         payload = request.data
 
         try:
+            user = request.user
             greenhouse = GreenhouseModel.objects.get(
                 greenhouseUID=greenhouseUID)
+
+            self.checkGreenhouseOwner(greenhouse, user)
             controller = ControllerModel.objects.get(
                 greenhouse=greenhouse, controllerID=controllerID)
 
@@ -458,12 +413,18 @@ class ControllerDetail(AppBaseAPI):
         except ControllerModel.DoesNotExist:
             print(f"controllerID {controllerID} not found")
             return Response({"message": f"controllerID {controllerID} not found"}, status=status.HTTP_404_NOT_FOUND)
+        except PermissionError:
+            print("not permitted to get greenhouse")
+            return Response({"error": "not permitted to get greenhouse"}, status=status.HTTP_403_FORBIDDEN)
 
     def delete(self, request, greenhouseUID, controllerID):
 
         try:
+            user = request.user
             greenhouse = GreenhouseModel.objects.get(
                 greenhouseUID=greenhouseUID)
+
+            self.checkGreenhouseOwner(greenhouse, user)
             controller = ControllerModel.objects.get(
                 greenhouse=greenhouse, controllerID=controllerID)
 
@@ -475,6 +436,9 @@ class ControllerDetail(AppBaseAPI):
         except ControllerModel.DoesNotExist:
             print(f"controllerID {controllerID} not found")
             return Response({"message": f"controllerID {controllerID} not found"}, status=status.HTTP_404_NOT_FOUND)
+        except PermissionError:
+            print("not permitted to get greenhouse")
+            return Response({"error": "not permitted to get greenhouse"}, status=status.HTTP_403_FORBIDDEN)
 
 
 class RealSensorAPI(AppBaseAPI):
@@ -482,12 +446,15 @@ class RealSensorAPI(AppBaseAPI):
 
     def patch(self, request, greenhouseUID, realSensorID):
         """ Update real sensor basic information """
+        user = request.user
         payload = request.data
 
         # get data
         try:
             greenhouse = GreenhouseModel.objects.get(
                 greenhouseUID=greenhouseUID)
+
+            self.checkGreenhouseOwner(greenhouse, user)
             realSensor = RealSensorModel.objects.get(
                 greenhouse=greenhouse, realSensorID=realSensorID)
 
@@ -509,13 +476,19 @@ class RealSensorAPI(AppBaseAPI):
         except ControllerModel.DoesNotExist:
             print(f"realSensorID: {realSensorID} no found")
             return Response({"errors": f"realSensorID: {realSensorID} no found"}, status=status.HTTP_404_NOT_FOUND)
+        except PermissionError:
+            print("not permitted to get greenhouse")
+            return Response({"error": "not permitted to get greenhouse"}, status=status.HTTP_403_FORBIDDEN)
 
     def delete(self, request, greenhouseUID, realSensorID):
+        user = request.user
         payload = request.data
 
         try:
             greenhouse = GreenhouseModel.objects.get(
                 greenhouseUID=greenhouseUID)
+
+            self.checkGreenhouseOwner(greenhouse, user)
             realSensor = RealSensorModel.objects.get(
                 greenhouse=greenhouse, realSensorID=realSensorID)
 
@@ -529,6 +502,9 @@ class RealSensorAPI(AppBaseAPI):
         except ControllerModel.DoesNotExist:
             print(f"realSensorID: {realSensorID} no found")
             return Response({"errors": f"realSensorID: {realSensorID} no found"}, status=status.HTTP_404_NOT_FOUND)
+        except PermissionError:
+            print("not permitted to get greenhouse")
+            return Response({"error": "not permitted to get greenhouse"}, status=status.HTTP_403_FORBIDDEN)
 
 
 class SensorAPI(AppBaseAPI):
@@ -622,6 +598,8 @@ class SensorAPI(AppBaseAPI):
         }
         """
         try:
+
+            user = request.user
             # get start time and end time
             startTime = request.query_params.get("startTime")
             endTime = request.query_params.get("endTime")
@@ -637,6 +615,7 @@ class SensorAPI(AppBaseAPI):
             # get history instances
             greenhouse = GreenhouseModel.objects.get(
                 greenhouseUID=greenhouseUID)
+            self.checkGreenhouseOwner(greenhouse, user)
             realSensor = RealSensorModel.objects.get(
                 greenhouse=greenhouse,
                 realSensorID=realSensorID,
@@ -691,3 +670,6 @@ class SensorAPI(AppBaseAPI):
         except SensorModel.DoesNotExist:
             print(f"sensor {sensorKey} not found")
             return Response({"errors": f"sensorKey: {sensorKey} not found"}, status=status.HTTP_404_NOT_FOUND)
+        except PermissionError:
+            print("not permitted to get greenhouse")
+            return Response({"error": "not permitted to get greenhouse"}, status=status.HTTP_403_FORBIDDEN)
