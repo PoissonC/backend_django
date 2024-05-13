@@ -42,8 +42,11 @@ class GetGreenhouseBase(AppBaseAPI):
         if controller["setting"].setdefault("evalveSchedules", None):
             scheds = controller["setting"].pop("evalveSchedules")
             for sched in scheds:
+                h, m, s = sched["duration"].split(":")
+                durationInSec = float(h) * 60 + float(m) * \
+                    1 + 0.5 * (float(s) // 30)
                 controller["setting"].setdefault(
-                    "duration", []).append(sched["duration"])
+                    "duration", []).append(durationInSec)
                 controller["setting"].setdefault(
                     "startTime", []).append(sched["startTime"])
 
@@ -73,6 +76,15 @@ class GetGreenhouseBase(AppBaseAPI):
             data["controllers"].setdefault(c["controllerKey"], []).append(c)
 
         return data
+
+
+class AppControllerBaseAPI(AppBaseAPI):
+    """
+    Base case for app to interact with controller
+    """
+
+    def parseInputControllerData(self, controllerData):
+        pass
 
 
 class RealSensorBaseAPI(GreenhouseBaseAPI):

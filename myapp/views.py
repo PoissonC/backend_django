@@ -51,15 +51,33 @@ class UserSpecificContentView(APIView):
         # Access the user from the request
         user = request.user
 
-        # Generate or retrieve content specific to the user
-        # For demonstration, we'll just return the user's username and email
-        content = {
-            'message': 'This is your user-specific content.',
-            'username': user.username,
-            'email': user.email,
-        }
+        # return user information
+        userInfo = UserInformationModel.objects.get(user=user)
+        userInfoData = UserInforSerializer(userInfo).data
 
-        return Response(content)
+        return Response(userInfoData, status=status.HTTP_200_OK)
+
+    def patch(self, req):
+        try:
+            user = req.user
+            userInfo = UserInformationModel.objects.get(user=user)
+
+            userInfoData = req.data
+            ser = UserInforSerializer(
+                userInfo, data=userInfoData, partial=True)
+
+            if not ser.is_valid():
+                print(ser.errors)
+                return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            ser.save()
+            return Response({"message": "updated"}, status=status.HTTP_200_OK)
+        except UserInformationModel.DoesNotExist:
+            print("User information not found")
+            return Response({"error": "User information not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            print(e)
+            return Response({"error": "error updaing account"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class SignupAPIView(APIView):

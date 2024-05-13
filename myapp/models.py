@@ -8,5 +8,6 @@ from phonenumber_field.modelfields import PhoneNumberField
 class UserInformationModel(models.Model):
     user = models.OneToOneField(
         User, on_delete=models.CASCADE, primary_key=True)
+    name = models.CharField(max_length=32)
     phoneNumber = PhoneNumberField(null=True, blank=False, unique=False)
-    Email = models.EmailField(null=True)
+    email = models.EmailField(null=True)

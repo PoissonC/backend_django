@@ -314,7 +314,7 @@ class GreenhouseDetail(GetGreenhouseBase):
             return Response({"error": "greenhouse does not exist"}, status=status.HTTP_404_NOT_FOUND)
 
 
-class Controller(AppBaseAPI):
+class Controller(AppControllerBaseAPI):
     """
     API to get all controllers in a greenhouse
     """
@@ -322,8 +322,11 @@ class Controller(AppBaseAPI):
     def get(self, request, greenhouseUID):
         """ Get all controller in the greenhouse"""
         try:
+            user = request.user
             greenhouse = GreenhouseModel.objects.get(
                 greenhouseUID=greenhouseUID)
+
+            self.checkGreenhouseOwner(greenhouse, user)
 
             ret = {}
             controllers = list(
@@ -379,8 +382,11 @@ class Controller(AppBaseAPI):
         ```
         """
         try:
+            user = req.user
             greenhouse = GreenhouseModel.objects.get(
                 greenhouseUID=greenhouseUID)
+
+            self.checkGreenhouseOwner(greenhouse, user)
 
             for controllerData in req.data:
                 controller = ControllerModel.objects.get(

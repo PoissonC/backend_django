@@ -2,7 +2,7 @@ import requests
 import json
 import datetime
 
-sample_greenhouse_uid = "86949e14-ecb2-4072-bae2-533fbace6a7f"
+sample_greenhouse_uid = "c8557574-3fd2-4650-90e8-e24a86851222"
 host = "127.0.0.1:8000"
 testing_controller_id = "evalve_3"
 testing_realSensor_id = "AirSensor_4"
@@ -40,7 +40,7 @@ def signup() -> requests.Response:
     })
 
     res = requests.post(
-        url=f"http://{host}/auth/signup/",
+        url=f"http://{host}/auth/signup",
         headers={
             "Content-Type": "application/json",
         },
@@ -58,7 +58,7 @@ def login() -> requests.Response:
     })
 
     res = requests.post(
-        url=f"http://{host}/auth/login/",
+        url=f"http://{host}/auth/login",
         headers={
             "Content-Type": "application/json",
         },
@@ -548,7 +548,7 @@ if __name__ == '__main__':
     # create_controller()
     # create_controller_and_rSensor()
 
-    # get_greenhouse()
+    get_greenhouse()
     # get_one_greenhouse()
     # get_controller_to_app()
     # get_controller_to_gre()
@@ -559,5 +559,5 @@ if __name__ == '__main__':
     # update_sensor_info()
     # update_sensor_data()
     # update_greenhouse()
-    update_on_off()
+    # update_on_off()
     pass
