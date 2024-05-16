@@ -39,12 +39,12 @@ class GetGreenhouseBase(AppBaseAPI):
 
     def parseEvalvSchedules(self, controller):
 
-        if controller["setting"].setdefault("evalveSchedules", None):
-            scheds = controller["setting"].pop("evalveSchedules")
+        if controller["setting"].setdefault("schedules", None):
+            scheds = controller["setting"].pop("schedules")
             for sched in scheds:
                 h, m, s = sched["duration"].split(":")
-                durationInSec = float(h) * 60 + float(m) * \
-                    1 + 0.5 * (float(s) // 30)
+                durationInSec = float(h) * 3600 + float(m) * \
+                    60 + float(s)
                 controller["setting"].setdefault(
                     "duration", []).append(durationInSec)
                 controller["setting"].setdefault(
@@ -62,7 +62,7 @@ class GetGreenhouseBase(AppBaseAPI):
             sensors = rS.pop("sensors")
             data["realSensors"][rS["realSensorID"]] = rS
             for s in sensors:
-                data["sensors"].setdefault(s.pop("sensorKey"), []).append(s)
+                data["sensors"].setdefault(s["sensorKey"], []).append(s)
 
         controllers = sorted(data.pop("controllers"),
                              key=lambda ele: ele["controllerID"])
@@ -83,8 +83,54 @@ class AppControllerBaseAPI(AppBaseAPI):
     Base case for app to interact with controller
     """
 
+    def validateKey(self, controllerData):
+        keysMap = {
+            "evalve": ["startTime", "duration", "cutHumidity"],
+            "shade": ["openTemp", "closeTemp"],
+            "fan": ["openTemp", "closeTemp"]
+        }
+        if controllerData.setdefault("controllerID", None) is None:
+            raise serializers.ValidationError({"controllerID is not defined"})
+
+        controllerID = controllerData["controllerID"]
+
+        if controllerData.setdefault("controllerKey", controllerID.split("_")[0]) not in keysMap.keys():
+            raise serializers.ValidationError({"controllerKey is not defined"})
+
+        for requiredKey in keysMap[controllerData["controllerKey"]]:
+            if controllerData["setting"].setdefault(requiredKey, None) is None:
+                raise serializers.ValidationError(
+                    f"'{requiredKey}' should not be None when 'controllerKey' is '{controllerData['controllerKey']}")
+
+    def parseInputSettingData(self, settingData):
+        settingData["schedules"] = []
+        durations = settingData.pop("duration", [])
+        startTimes = settingData.pop("startTime", [])
+
+        if (len(durations) != len(startTimes)):
+            raise serializers.ValidationError(
+                {"length of duration and startTime are not equal in request data"})
+
+        for i in range(len(durations)):
+            settingData["schedules"].append(
+                {
+                    "startTime": startTimes[i],
+                    "duration": durations[i],
+                }
+            )
+
+        return settingData
+
     def parseInputControllerData(self, controllerData):
-        pass
+        self.validateKey(controllerData)
+
+        controllerData.setdefault("setting", {})[
+            "on"] = controllerData.pop("on", None)
+        controllerData.setdefault("setting", {})[
+            "manualControl"] = controllerData.pop("manualControl", None)
+        controllerData["setting"] = self.parseInputSettingData(
+            controllerData["setting"])
+        return controllerData
 
 
 class RealSensorBaseAPI(GreenhouseBaseAPI):
@@ -178,7 +224,7 @@ class ControllerBaseAPI(GreenhouseBaseAPI):
     def popSettingElement(self, controllerData: dict):
         controllerData.setdefault("setting", {}).pop("id", None)
         for sched in controllerData["setting"].setdefault(
-                "evalveSchedules", {}):
+                "schedules", {}):
             sched.pop("id", None)
 
         return controllerData

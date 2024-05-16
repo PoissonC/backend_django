@@ -1,93 +1,10 @@
-[
-  {
-    "greenhouseUID": "c8557574-3fd2-4650-90e8-e24a86851222",
-    "owner": 7,
-    "realSensors": {
-      "AirSensor_4": {
-        "id": 1,
-        "greenhouse": "c8557574-3fd2-4650-90e8-e24a86851222",
-        "itemName": "感測器",
-        "realSensorID": "AirSensor_4",
-        "realSensorKey": "AirSensor",
-        "electricity": 4.12,
-        "lat": 24.112,
-        "lng": 47.33
-      }
-    },
-    "name": "GH2",
-    "address": "Taipei, Taiwan",
-    "beginDate": "2011-03-21",
-    "photo": null,
-    "sensors": {
-      "airTemp": [
-        {
-          "itemName": "感測項目",
-          "realSensorID": "AirSensor_4",
-          "value": 20.1
-        }
-      ],
-      "airHumidity": [
-        {
-          "itemName": "感測項目",
-          "realSensorID": "AirSensor_4",
-          "value": 68.9
-        }
-      ]
-    },
-    "controllers": {
-      "evalve": [
-        {
-          "greenhouseUID": "c8557574-3fd2-4650-90e8-e24a86851222",
-          "controllerID": "evalve_3",
-          "controllerKey": "evalve",
-          "electricity": 100.0,
-          "itemName": "default name",
-          "lat": null,
-          "lng": null,
-          "setting": {
-            "id": 1,
-            "controller": 1,
-            "openTemp": null,
-            "closeTemp": null,
-            "timestamp": "2024-04-03T17:04:04Z",
-            "isCurrent": true,
-            "cutHumidity": 30.0,
-            "duration": [
-              0.0,
-              0.0
-            ],
-            "startTime": [
-              "15:00:00",
-              "16:00:00"
-            ]
-          },
-          "on": false,
-          "manualControl": false
-        }
-      ],
-      "fan": [
-        {
-          "greenhouseUID": "c8557574-3fd2-4650-90e8-e24a86851222",
-          "controllerID": "fan_3",
-          "controllerKey": "fan",
-          "electricity": 100.0,
-          "itemName": "default name",
-          "lat": null,
-          "lng": null,
-          "setting": {
-            "id": 2,
-            "controller": 2,
-            "openTemp": 21.0,
-            "closeTemp": 20.0,
-            "evalveSchedules": [],
-            "timestamp": "2024-04-03T17:04:04Z",
-            "isCurrent": true,
-            "cutHumidity": null
-          },
-          "on": false,
-          "manualControl": false
-        }
-      ]
-    }
+{
+  "token": "74171730342e60b534521a54c1167cfd48114e23",
+  "user": {
+    "user": 7,
+    "phoneNumber": "+886987457321",
+    "email": "daniel.bb0321@gmail.com",
+    "name": "Daniel",
+    "username": "daniel0321forever"
   }
-]
+}

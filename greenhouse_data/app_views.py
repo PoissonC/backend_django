@@ -134,7 +134,7 @@ class Greenhouse(GetGreenhouseBase):
                         "controller": 16,
                         "openTemp": 21.0,
                         "closeTemp": 20.0,
-                        "evalveSchedules": [],
+                        "schedules": [],
                         "timestamp": "2024-04-03T17:04:04Z",
                         "isCurrent": true
                     },
@@ -309,7 +309,7 @@ class Controller(AppControllerBaseAPI):
                     "manualControl": False,
                     "timestamp": "2024-04-03 17:04:04",
                     "cutHumidity": 21.3,
-                    "evalveSchedules": [
+                    "schedules": [
                         {"duration": 12, "startTime": "15:00"},
                     ]
                 }
@@ -321,7 +321,7 @@ class Controller(AppControllerBaseAPI):
                     "manualControl": False,
                     "timestamp": "2024-04-03 17:04:04",
                     "cutHumidity": 21.3,
-                    "evalveSchedules": [
+                    "schedules": [
                         {"duration": 12, "startTime": "15:00"},
                     ]
                 }
@@ -331,25 +331,37 @@ class Controller(AppControllerBaseAPI):
         ```
         """
         try:
+            print("input data", req.data)
             user = req.user
             greenhouse = GreenhouseModel.objects.get(
                 greenhouseUID=greenhouseUID)
 
             self.checkGreenhouseOwner(greenhouse, user)
 
-            for controllerData in req.data:
+            settingDataList = []
+            for rawControllerData in req.data:
+                controllerData = self.parseInputControllerData(
+                    rawControllerData)
                 controller = ControllerModel.objects.get(
                     greenhouse=greenhouse, controllerID=controllerData["controllerID"])
                 settingData = controllerData["setting"]
                 settingData["controller"] = controller.id
-                ser = ControllerSettingSerializer(data=settingData)
 
-                if not ser.is_valid():
-                    print(ser.errors)
-                    return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
+                settingDataList.append(settingData)
 
-                ser.save()
+            ser = ControllerSettingSerializer(data=settingDataList, many=True)
+
+            if not ser.is_valid():
+                print(ser.errors)
+                return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            ser.save()
+
             return Response({"message": "controller updated"}, status=status.HTTP_200_OK)
+
+        except ValidationError as e:
+            print(e.detail)
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
 
         except GreenhouseModel.DoesNotExist:
             print("greenhouse uid:", greenhouseUID)
@@ -449,6 +461,8 @@ class RealSensorAPI(AppBaseAPI):
         user = request.user
         payload = request.data
 
+        print("real sensor patching", payload)
+
         # get data
         try:
             greenhouse = GreenhouseModel.objects.get(
@@ -508,9 +522,10 @@ class RealSensorAPI(AppBaseAPI):
 
 
 class SensorAPI(AppBaseAPI):
-    def findUnitScale(self, startTime: datetime.datetime, endTime: datetime.datetime, labelScale=3):
+    def findUnitScale(self, startTime: datetime.datetime, endTime: datetime.datetime, labelScale=2):
         hoursDiff = endTime - startTime
         hoursDiff = int(hoursDiff.days * 24 + hoursDiff.seconds // 3600)
+        print("hoursDiff = ", hoursDiff)
 
         if (hoursDiff < 12 * labelScale):
             unitScale = 1
@@ -553,18 +568,15 @@ class SensorAPI(AppBaseAPI):
             ))
 
             if len(timeInstance) > 0:
-                print("get time instance")
                 hourlyData.append(timeInstance[0].value)
                 lastData = hourlyData[-1]
                 continue
 
             if lastData:
-                print("using last data")
                 hourlyData.append(lastData)
                 lastData = hourlyData[-1]
                 continue
 
-            print(f"finding data at {t} from future instances")
             broken = True
             break
 

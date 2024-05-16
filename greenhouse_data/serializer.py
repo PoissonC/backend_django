@@ -294,12 +294,12 @@ class EValveScheduleSerializer(serializers.ModelSerializer):
     )
 
     class Meta:
-        model = EvalveScheduleModel
+        model = ScheduleModel
         # generally controllerSetting is also required for creation
         fields = "__all__"
 
     def create(self, validated_data):
-        instance = EvalveScheduleModel.objects.create(**validated_data)
+        instance = ScheduleModel.objects.create(**validated_data)
         return instance
 
 
@@ -314,7 +314,7 @@ class ControllerSettingSerializer(serializers.ModelSerializer):
         "timestamp": "2024-04-03 17:04:04",
         "openTemp": 31.2, # ignored if not used
         "closeTemp": 30.1, # ignored if not used
-        "evalveSchedules": [ # ignored if not used
+        "schedules": [ # ignored if not used
             {"cutHumidity": 24.1, "duration": 15, "startTime": "15:00"},
             {"cutHumidity": 24.3, "duration": 15, "startTime": "12:00"}
         ]
@@ -328,7 +328,7 @@ class ControllerSettingSerializer(serializers.ModelSerializer):
     )
     openTemp = serializers.FloatField(allow_null=True, required=False)
     closeTemp = serializers.FloatField(allow_null=True, required=False)
-    evalveSchedules = EValveScheduleSerializer(
+    schedules = EValveScheduleSerializer(
         many=True, allow_null=True, required=False)
 
     class Meta:
@@ -351,6 +351,10 @@ class ControllerSettingSerializer(serializers.ModelSerializer):
                 "warning: multiple instances have isCurrent == True, something might went wrong")
             return True
 
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        return attrs
+
     def create(self, validated_data):
         """
         Update controller setting is actually creating new controller setting history
@@ -366,18 +370,18 @@ class ControllerSettingSerializer(serializers.ModelSerializer):
 
             validated_data.setdefault("openTemp", None)
             validated_data.setdefault("closeTemp", None)
-            validated_data.setdefault("evalveSchedules", None)
+            validated_data.setdefault("schedules", None)
             validated_data.setdefault("cutHumidity", None)
-            evalveSchedulesData = validated_data.pop("evalveSchedules")
+            schedulesData = validated_data.pop("schedules")
 
             controllerSetting = ControllerSettingHistoryModel.objects.create(
                 **validated_data)
 
-            if evalveSchedulesData is not None:
-                eSer = self.fields["evalveSchedules"]
-                for s in evalveSchedulesData:
+            if schedulesData is not None:
+                eSer = self.fields["schedules"]
+                for s in schedulesData:
                     s["controllerSetting"] = controllerSetting
-                eSer.create(evalveSchedulesData)
+                eSer.create(schedulesData)
 
         except Exception as e:
             if controllerSetting:
@@ -387,14 +391,14 @@ class ControllerSettingSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
-        schedules = list(EvalveScheduleModel.objects.filter(
+        schedules = list(ScheduleModel.objects.filter(
             controllerSetting=instance))
 
         if len(schedules) != 0:
-            ret["evalveSchedules"] = []
+            ret["schedules"] = []
             for s in schedules:
                 ser = EValveScheduleSerializer(s)
-                ret["evalveSchedules"].append(ser.data)
+                ret["schedules"].append(ser.data)
 
         return ret
 
@@ -418,7 +422,7 @@ class ControllerSerializer(serializers.ModelSerializer):
             "timestamp": "2024-04-03 17:04:04",
             "openTemp": 31.2, # ignored if not used
             "closeTemp": 30.1, # ignored if not used
-            "evalveSchedules": [ # ignored if not used
+            "schedules": [ # ignored if not used
                 {"cutHumidity": 24.1, "duration": 15, "startTime": "15:00"},
                 {"cutHumidity": 24.3, "duration": 15, "startTime": "12:00"}
             ]
@@ -438,7 +442,7 @@ class ControllerSerializer(serializers.ModelSerializer):
         "setting": {
             "openTemp": 31.2, # ignored if not used
             "closeTemp": 30.1, # ignored if not used
-            "evalveSchedules": [ # ignored if not used
+            "schedules": [ # ignored if not used
                 {"cutHumidity": 24.1, "duration": 15, "startTime": "15:00"},
                 {"cutHumidity": 24.3, "duration": 15, "startTime": "12:00"}
             ]
@@ -468,7 +472,7 @@ class ControllerSerializer(serializers.ModelSerializer):
 
     def __validate(self, validated_data):
         keysMap = {
-            "evalve": ["evalveSchedules", "cutHumidity"],
+            "evalve": ["schedules", "cutHumidity"],
             "shade": ["openTemp", "closeTemp"],
             "fan": ["openTemp", "closeTemp"]
         }
@@ -518,7 +522,7 @@ class ControllerSerializer(serializers.ModelSerializer):
         """
         Get the current controller setting for the controller, serialzie the current controller setting
         to json format. The controller setting might include the following fields
-        `["on", "manualControl", "openTemp", "closeTemp", "evalveSchedules]`
+        `["on", "manualControl", "openTemp", "closeTemp", "schedules]`
         """
         ret = {
             "greenhouseUID": instance.greenhouse.greenhouseUID,
@@ -587,7 +591,7 @@ class GreenhouseSerializer(serializers.ModelSerializer):
                     "setting": {
                         "on": True,
                         "manualControl": False,
-                        "evalveSchedules": [
+                        "schedules": [
                             {"cutHumidity": 30, "duration": 15,
                                 "startTime": "15:00"},
                             {"cutHumidity": 30, "duration": 15,

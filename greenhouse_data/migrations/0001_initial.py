@@ -72,7 +72,7 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.CreateModel(
-            name="EvalveScheduleModel",
+            name="ScheduleModel",
             fields=[
                 (
                     "id",
@@ -89,13 +89,13 @@ class Migration(migrations.Migration):
                     "controllerSetting",
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        related_name="evalveSchedules",
+                        related_name="schedules",
                         to="greenhouse_data.controllersettinghistorymodel",
                     ),
                 ),
             ],
             options={
-                "db_table": "evalveScheduleTable",
+                "db_table": "schedulesTable",
             },
         ),
         migrations.CreateModel(

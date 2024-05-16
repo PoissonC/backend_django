@@ -63,7 +63,7 @@ class GreenhouseAPI(RealSensorBaseAPI, ControllerBaseAPI):
                         "on": False,
                         "manualControl": False,
                         "timestamp": "2024-04-03 17:04:04",
-                        "evalveSchedules": [
+                        "schedules": [
                             {"cutHumidity": 30, "duration": 15, "startTime": "15:00"},
                             {"cutHumidity": 30, "duration": 15, "startTime": "16:00"},
                         ],
@@ -196,7 +196,7 @@ class RealSensorAPI(RealSensorBaseAPI):
         {
             "AirSensor_1": {
                 "greenhouseUID": "1234",
-                "realSensorID": "AirSensor",
+                "realSensorID": "AirSensor_1",
                 "electricity": 4.12,
                 "address":
                 {
@@ -273,7 +273,7 @@ class ControllerAPI(ControllerBaseAPI):
                     "manualControl": False,
                     "timestamp": "2024-04-03 17:04:04",
                     "cutHumidity": 30,
-                    "evalveSchedules": [
+                    "schedules": [
                            {"duration": 15, "startTime": "15:00"},
                            {"duration": 15, "startTime": "16:00"},
                     ],
@@ -333,7 +333,7 @@ class ControllerAPI(ControllerBaseAPI):
                     "on": False,
                     "manualControl": False,
                     "timestamp": "2024-04-03 17:04:04",
-                    "evalveSchedules": [
+                    "schedules": [
                         {"cutHumidity": 30, "duration": 15, "startTime": "15:00"},
                         {"cutHumidity": 30, "duration": 15, "startTime": "16:00"},
                     ],
@@ -423,7 +423,7 @@ class ControllerAPI(ControllerBaseAPI):
                     "manualControl": False,
                     "timestamp": "2024-04-03 17:04:04",
                     "cutHumidity": 30,
-                    "evalveSchedules": [
+                    "schedules": [
                            {"duration": 15, "startTime": "15:00"},
                            {"duration": 15, "startTime": "16:00"},
                     ],

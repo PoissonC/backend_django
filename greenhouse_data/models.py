@@ -114,15 +114,15 @@ class ControllerSettingHistoryModel(models.Model):
     cutHumidity = models.FloatField(null=True)
 
 
-class EvalveScheduleModel(models.Model):
+class ScheduleModel(models.Model):
     """
     The model for each time schedule setting for electric vale
     """
 
     class Meta:
-        db_table = "evalveScheduleTable"
+        db_table = "schedulesTable"
 
     controllerSetting = models.ForeignKey(
-        ControllerSettingHistoryModel, on_delete=models.CASCADE, related_name="evalveSchedules")
+        ControllerSettingHistoryModel, on_delete=models.CASCADE, related_name="schedules")
     duration = models.DurationField()
     startTime = models.TimeField(default=datetime.time(16, 0, 0))
